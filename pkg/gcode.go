@@ -125,9 +125,15 @@ func (b *GCodeBuilder) moveRel(x, y RelativePos) *GCodeBuilder {
 // Move moves to absolute position given
 // NOTE: Move calls moveRel so does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) Move(x, y AbsolutePos) *GCodeBuilder {
+	b.Commentf("BEGIN Move(%f, %f)", x, y)
+
 	x, y = validateAbs(x, y)
 	relX, relY := b.absToRel(translate(x, y))
-	return b.moveRel(relX, relY)
+	b.moveRel(relX, relY)
+
+	b.Commentf("END Move(%f, %f)", x, y)
+
+	return b
 }
 
 // Comment writes comment to GCode.
@@ -136,35 +142,36 @@ func (b *GCodeBuilder) Comment(comment string) *GCodeBuilder {
 	return b
 }
 
-// DrawLine draws a line from (x0, y0) to (x1, y1).
-func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
-	return b.drawLine(x0, y0, x1, y1, true)
+func (b *GCodeBuilder) Commentf(format string, args ...interface{}) *GCodeBuilder {
+	return b.Comment(fmt.Sprintf(format, args...))
 }
 
-func (b *GCodeBuilder) drawLine(x0, y0, x1, y1 AbsolutePos, careDrawingState bool) *GCodeBuilder {
+// DrawLine draws a line from (x0, y0) to (x1, y1).
+func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
+	b.Commentf("BEGIN DrawLine(%f, %f, %f, %f)", x0, y0, x1, y1)
+
 	// 1.1: go to x0, y0
-	b.Comment("Draw line")
 	b.Move(x0, y0)
 	// 1.2: start drawing
-	if careDrawingState {
-		b.Down()
-	}
+	b.Down()
 	// 1.3: go to x1, y1
 	b.Move(x1, y1)
 	// 1.4: stop drawing
-	if careDrawingState {
-		b.Up()
-	}
+	b.Up()
+
+	b.Commentf("END DrawLine(%f, %f, %f, %f)", x0, y0, x1, y1)
+
 	return b
 }
 
 // DrawPath draws a path of lines. Closed if true, will automatically close the path by drawing line from path[n] to path[0].
 func (b *GCodeBuilder) DrawPath(closed bool, path ...image.Point) *GCodeBuilder {
-	b.Comment("Drawing path")
+	b.Commentf("BEGIN DrawPath(%v, %v)", closed, path)
+
 	b.Move(AbsolutePos(path[0].X), AbsolutePos(path[0].Y))
 	b.Down()
 	for i := 1; i < len(path); i++ {
-		b.Comment(fmt.Sprintf("Line %d", i))
+		b.Commentf("Line %d", i)
 		p0 := path[i]
 		b.Move(AbsolutePos(p0.X), AbsolutePos(p0.Y))
 	}
@@ -177,14 +184,15 @@ func (b *GCodeBuilder) DrawPath(closed bool, path ...image.Point) *GCodeBuilder 
 
 	b.Up()
 
-	b.Comment("Path finished")
+	b.Commentf("END DrawPath(%v, %v)", closed, path)
 
 	return b
 }
 
 // DrawCircle draws circle on absolute (x,y) with radius r.
 func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuilder {
-	b.Comment("Draw circle")
+	b.Commentf("BEGIN DrawCircle(%f, %f, %f)", xImg, yImg, r)
+
 	// 1.0: find x,y to move
 	x, y := translate(xImg, yImg)
 	baseX := xImg
@@ -195,6 +203,8 @@ func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuild
 	b.Down()
 	b.code += fmt.Sprintf("G2 I%[1]f J%[2]f ; Draw circle with center in %[1]f and %[2]f with radius %[3]f\n", relX, relY, r)
 	b.Up()
+
+	b.Commentf("END DrawCircle(%f, %f, %f)", xImg, yImg, r)
 	return b
 }
 
