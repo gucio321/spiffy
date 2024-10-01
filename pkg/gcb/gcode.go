@@ -1,4 +1,5 @@
-package spiffy
+// Package gcb provides a highly-abstracted way to generate GCode 2D engravings.
+package gcb
 
 import (
 	"fmt"

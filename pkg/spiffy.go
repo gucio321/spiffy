@@ -5,6 +5,8 @@ import (
 	"image"
 	"strconv"
 	"strings"
+
+	"github.com/gucio321/spiffy/pkg/gcb"
 )
 
 type Spiffy struct {
@@ -93,7 +95,7 @@ func (s *Spiffy) Scale(scale float32) *Spiffy {
 
 // GCode returns single-purpose GCode for our project.
 func (s *Spiffy) GCode() (string, error) {
-	builder := NewGCodeBuilder()
+	builder := gcb.NewGCodeBuilder()
 
 	// 1.0: draw paths
 	for _, line := range s.Graph.Paths {
@@ -132,13 +134,13 @@ func (s *Spiffy) GCode() (string, error) {
 
 	// 2.0: draw circles
 	for _, c := range s.Graph.Circles {
-		builder.DrawCircleFilled(AbsolutePos(c.Cx*s.scale), AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
+		builder.DrawCircleFilled(gcb.AbsolutePos(c.Cx*s.scale), gcb.AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
 		builder.Separator()
 	}
 
 	// 2.1: draw rects
 	for _, r := range s.Graph.Rects {
-		builder.DrawRectFilled(AbsolutePos(r.X*s.scale), AbsolutePos(r.Y*s.scale), AbsolutePos(r.X*s.scale+r.W*s.scale), AbsolutePos(r.Y*s.scale+r.H*s.scale))
+		builder.DrawRectFilled(gcb.AbsolutePos(r.X*s.scale), gcb.AbsolutePos(r.Y*s.scale), gcb.AbsolutePos(r.X*s.scale+r.W*s.scale), gcb.AbsolutePos(r.Y*s.scale+r.H*s.scale))
 	}
 
 	result := builder.String()
