@@ -102,19 +102,20 @@
        style="fill:#000000"
        id="path1"
        cx="653.98425"
-       cy="891.86066"
-       r="126.3107" />
+       cy="691.86066"
+       r="56.3107" />
     <path
        style="fill:#000000;stroke:#000000;stroke-width:19.8992;stroke-dasharray:none;stroke-opacity:1"
-       d="M 97.959015,356.42506 380.99651,63.67009"
+       d="M 97.959015,356.42506 380.99651,63.67009 380,356"
        id="path2" />
     <rect
        style="fill:#000000;stroke:#000000;stroke-width:19.8992;stroke-dasharray:none;stroke-opacity:1"
        id="rect2"
        width="375.45145"
-       height="375.45145"
-       x="228.82341"
-       y="332.46912" />
+       height="175.45145"
+       x="288.82341"
+       y="432.46912" />
+       <!--
     <text
        xml:space="preserve"
        id="text2"
@@ -171,5 +172,6 @@
          id="tspan16"><tspan
            style="font-family:'Estrangelo Midyat';-inkscape-font-specification:'Estrangelo Midyat';fill:#1a1a1a"
            id="tspan15">pizda</tspan></tspan></text>
+  -->
   </g>
 </svg>
