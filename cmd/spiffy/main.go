@@ -30,6 +30,6 @@ func main() {
 		glg.Fatalf("Cannot parse file %s: %v", inputFilePath, err)
 	}
 
-	result.Scale(0.1)
+	result.Scale(0.05)
 	fmt.Println(result.GCode())
 }
