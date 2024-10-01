@@ -102,7 +102,7 @@ func (b *GCodeBuilder) Up() *GCodeBuilder {
 		glg.Fatalf("Up called, but not drawing! %s", b.code)
 	}
 
-	b.code += fmt.Sprintf("G0 Z%d ; move up\n", b.depth)
+	b.code += fmt.Sprintf("G0 Z%d ; stop drawing\n", b.depth)
 
 	b.isDrawing = false
 
@@ -115,7 +115,7 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 		glg.Fatalf("Down called, but already drawing! %s", b.code)
 	}
 
-	b.code += fmt.Sprintf("G0 Z-%d ; move down\n", b.depth)
+	b.code += fmt.Sprintf("G0 Z-%d ; start drawing\n", b.depth)
 
 	b.isDrawing = true
 
