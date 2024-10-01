@@ -11,7 +11,8 @@ type (
 	RelativePos float32
 )
 
-const Preamble = `M413 S0 ; Disable power loss recovery
+const Preamble = `;; BEGIN PREAMBUA
+M413 S0 ; Disable power loss recovery
 M107 ; Fan off
 M104 S0 ; Set target temperature
 G92 E0 ; Hotend reset
@@ -27,10 +28,22 @@ G91 ; Relative positioning
 
 M204 S2000 ; PRinting and travel speed in mm/s/s
 
+;; END PREABUA
+
+;; BEGIN BUA
+`
+
+const Postamble = `;; END BUA
+
+;; BEGIN POSTABUA
+M84 X Y Z E ; Disable ALL motors
+;; END POSTABUA
 `
 
 const (
 	BaseX, BaseY = 80, 80
+	MinX, MinY   = 80, 80
+	MaxX, MaxY   = 160, 160
 	BaseDepth    = 20
 )
 
@@ -43,7 +56,6 @@ type GCodeBuilder struct {
 
 func NewGCodeBuilder() *GCodeBuilder {
 	return &GCodeBuilder{
-		code:     Preamble,
 		currentX: BaseX,
 		currentY: BaseY,
 		depth:    BaseDepth,
@@ -104,8 +116,16 @@ func (b *GCodeBuilder) absToRel(x, y AbsolutePos) (RelativePos, RelativePos) {
 	return RelativePos(x - b.currentX), RelativePos(y - b.currentY)
 }
 
+func (b *GCodeBuilder) WriteComment(comment string) *GCodeBuilder {
+	b.code += fmt.Sprintf("; %s\n", comment)
+	return b
+}
+
 func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
+	x0, y0 = translate(x0, y0)
+	x1, y1 = translate(x1, y1)
 	// 1.1: go to x0, y0
+	b.WriteComment("Draw line")
 	b.MoveAbs(x0, y0)
 	// 1.2: start drawing
 	b.Down()
@@ -116,20 +136,32 @@ func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 	return b
 }
 
-func (b *GCodeBuilder) AddCircle(centerRelativeX, centerRelativeY, radius float64) *GCodeBuilder {
-	// 1: calculate how to move to start
-	// 1.1: current estimated radius
+func (b *GCodeBuilder) DrawCircle(x, y AbsolutePos, r float32) *GCodeBuilder {
+	b.WriteComment("Draw circle")
+	// 1.0: find x,y to move
+	x, y = translate(x, y)
+	baseX := x
+	baseY := y + AbsolutePos(r)
+	validateAbs(baseX, baseY)
+	b.MoveAbs(baseX, baseY)
+	// 1.1: do circle
+	relX, relY := b.absToRel(x, y)
+	b.Down()
+	b.code += fmt.Sprintf("G2 I%[1]f J%[2]f ; Draw circle with center in %[1]f and %[2]f with radius %[3]f\n", relX, relY, r)
+	b.Up()
 	return b
 }
 
 func (b *GCodeBuilder) String() string {
-	return b.code
+	return fmt.Sprintf("%s\n%s\n%s", Preamble, b.code, Postamble)
 }
 
 // GCode returns single-purpose GCode for our project.
 func (s *Spiffy) GCode() (string, error) {
 	builder := NewGCodeBuilder()
+
 	builder.DrawLine(0, 0, 10, 10)
+	builder.DrawCircle(10, 10, 10)
 
 	result := builder.String()
 	return result, nil
@@ -137,15 +169,19 @@ func (s *Spiffy) GCode() (string, error) {
 
 func validateAbs(x, y AbsolutePos) (AbsolutePos, AbsolutePos) {
 	switch {
-	case x < 0:
+	case x < MinX:
 		glg.Fatalf("Absolute position must be positive, got %f", x)
-	case x > BaseX*2: // we assume BaseX is a center
+	case x > MaxX: // we assume BaseX is a center
 		glg.Fatalf("Absolute position must be less than %f, got %f", BaseX*2, x)
-	case y < 0:
+	case y < MinY:
 		glg.Fatalf("Absolute position must be positive, got %f", y)
-	case y > BaseY*2: // we assume BaseY is a center
+	case y > MaxY: // we assume BaseY is a center
 		glg.Fatalf("Absolute position must be less than %f, got %f", BaseY*2, y)
 	}
 
 	return x, y
+}
+
+func translate(x, y AbsolutePos) (AbsolutePos, AbsolutePos) {
+	return x + MinX, y + MinY
 }
