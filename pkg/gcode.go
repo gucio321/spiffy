@@ -265,6 +265,37 @@ func (b *GCodeBuilder) DrawSector(xImg, yImg AbsolutePos, radius float32, start,
 	return b
 }
 
+// DrawRect draws rectangle from (x0, y0) to (x1, y1).
+func (b *GCodeBuilder) DrawRect(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
+	b.Commentf("BEGIN DrawRect(%f, %f, %f, %f)", x0, y0, x1, y1)
+
+	b.Move(x0, y0)
+	b.Down()
+	b.Move(x1, y0)
+	b.Move(x1, y1)
+	b.Move(x0, y1)
+	b.Move(x0, y0)
+	b.Up()
+
+	b.Commentf("END DrawRect(%f, %f, %f, %f)", x0, y0, x1, y1)
+
+	return b
+}
+
+// DrawRectFilled draws a filled rectangle.
+func (b *GCodeBuilder) DrawRectFilled(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
+	b.Commentf("BEGIN DrawRectFilled(%f, %f, %f, %f)", x0, y0, x1, y1)
+
+	delta := AbsolutePos(b.headSize)
+	for x00, y00, x11, y11 := x0, y0, x1, y1; x00 < x11 || y00 < y11; x00, y00, x11, y11 = x00+delta, y00+delta, x11-delta, y11-delta {
+		b.DrawRect(x00, y00, x11, y11)
+	}
+
+	b.Commentf("END DrawRectFilled(%f, %f, %f, %f)", x0, y0, x1, y1)
+
+	return b
+}
+
 // String returns built GCode.
 func (b *GCodeBuilder) String() string {
 	return fmt.Sprintf("%s\n%s\n%s", b.preamble, b.code, b.postamble)

@@ -136,6 +136,11 @@ func (s *Spiffy) GCode() (string, error) {
 		builder.Separator()
 	}
 
+	// 2.1: draw rects
+	for _, r := range s.Graph.Rects {
+		builder.DrawRectFilled(AbsolutePos(r.X*s.scale), AbsolutePos(r.Y*s.scale), AbsolutePos(r.X*s.scale+r.W*s.scale), AbsolutePos(r.Y*s.scale+r.H*s.scale))
+	}
+
 	result := builder.String()
 	return result, nil
 }
