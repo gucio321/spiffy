@@ -1,7 +1,11 @@
 package spiffy
 
 import (
+	"errors"
 	"fmt"
+	"image"
+	"strconv"
+	"strings"
 
 	"github.com/kpango/glg"
 )
@@ -136,6 +140,20 @@ func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 	return b
 }
 
+func (b *GCodeBuilder) DrawPath(path ...image.Point) *GCodeBuilder {
+	b.WriteComment("Drawing path")
+	for i := 0; i < len(path)-1; i++ {
+		b.WriteComment(fmt.Sprintf("Line %d", i))
+		p0 := path[i]
+		p1 := path[i+1]
+		b.DrawLine(AbsolutePos(p0.X), AbsolutePos(p0.Y), AbsolutePos(p1.X), AbsolutePos(p1.Y))
+	}
+
+	b.WriteComment("Path finished")
+
+	return b
+}
+
 func (b *GCodeBuilder) DrawCircle(x, y AbsolutePos, r float32) *GCodeBuilder {
 	b.WriteComment("Draw circle")
 	// 1.0: find x,y to move
@@ -160,7 +178,39 @@ func (b *GCodeBuilder) String() string {
 func (s *Spiffy) GCode() (string, error) {
 	builder := NewGCodeBuilder()
 
-	builder.DrawLine(0, 0, 10, 10)
+	for _, line := range s.Graph.Paths {
+		txt := line.D
+		txts := strings.Split(txt, " ")
+		if txts[0] != "M" {
+			return "", errors.New("Unexpected paths.D prefix; Not implemented")
+		}
+
+		paths := make([]image.Point, 0, len(txts)-1)
+
+		for _, t := range txts[1:] {
+			parts := strings.Split(t, ",")
+			if len(parts) != 2 {
+				return "", errors.New("Unexpected paths.D parts; Not implemented")
+			}
+
+			xStr, yStr := parts[0], parts[1]
+			// parse floats
+			x, err := strconv.ParseFloat(xStr, 32)
+			if err != nil {
+				return "", err
+			}
+
+			y, err := strconv.ParseFloat(yStr, 32)
+			if err != nil {
+				return "", err
+			}
+
+			paths = append(paths, image.Point{X: int(x), Y: int(y)}) // TODO: loses precision; use custom thing instead of image.Point
+		}
+
+		builder.DrawPath(paths...)
+	}
+
 	builder.DrawCircle(10, 10, 10)
 
 	result := builder.String()
@@ -170,13 +220,13 @@ func (s *Spiffy) GCode() (string, error) {
 func validateAbs(x, y AbsolutePos) (AbsolutePos, AbsolutePos) {
 	switch {
 	case x < MinX:
-		glg.Fatalf("Absolute position must be positive, got %f", x)
+		glg.Fatalf("Absolute position must be larger than %f, got %f", MinX, x)
 	case x > MaxX: // we assume BaseX is a center
-		glg.Fatalf("Absolute position must be less than %f, got %f", BaseX*2, x)
+		glg.Fatalf("Absolute position must be less than %f, got %f", MaxX, x)
 	case y < MinY:
-		glg.Fatalf("Absolute position must be positive, got %f", y)
+		glg.Fatalf("Absolute position must be larger than %f, got %f", MinY, y)
 	case y > MaxY: // we assume BaseY is a center
-		glg.Fatalf("Absolute position must be less than %f, got %f", BaseY*2, y)
+		glg.Fatalf("Absolute position must be less than %f, got %f", MaxY, y)
 	}
 
 	return x, y
