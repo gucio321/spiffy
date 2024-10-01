@@ -53,9 +53,10 @@ const (
 	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80
 	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
-	MinX, MinY = 80, 80
-	MaxX, MaxY = 160, 160
-	BaseDepth  = 20
+	MinX, MinY      = 80, 80
+	MaxX, MaxY      = 160, 160
+	BaseDepth       = 20
+	DefaultHeadSize = 2
 )
 
 // GCodeBuilder allows to build GCode. It implements several drawing methods.
@@ -65,6 +66,7 @@ const (
 type GCodeBuilder struct {
 	code                string
 	depth               int
+	headSize            int
 	isDrawing           bool
 	currentX, currentY  HardwareAbsolutePos
 	preamble, postamble string
@@ -76,6 +78,7 @@ func NewGCodeBuilder() *GCodeBuilder {
 		currentX:  BaseX,
 		currentY:  BaseY,
 		depth:     BaseDepth,
+		headSize:  DefaultHeadSize,
 		preamble:  DefaultPreamble,
 		postamble: DefaultPostamble,
 	}
@@ -84,6 +87,12 @@ func NewGCodeBuilder() *GCodeBuilder {
 // SetDepth sets how deep the Heas should go.
 func (b *GCodeBuilder) SetDepth(depth int) *GCodeBuilder {
 	b.depth = depth
+	return b
+}
+
+// SetHeadSize sets size of the head.
+func (b *GCodeBuilder) SetHeadSize(size int) *GCodeBuilder {
+	b.headSize = size
 	return b
 }
 
@@ -212,6 +221,20 @@ func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuild
 	b.Up()
 
 	b.Commentf("END DrawCircle(%f, %f, %f)", xImg, yImg, r)
+	return b
+}
+
+// DrawCircleFilled draws a filled circle.
+// Make sure to set headSize before.
+func (b *GCodeBuilder) DrawCircleFilled(x, y AbsolutePos, radius float32) *GCodeBuilder {
+	b.Commentf("BEGIN DrawCircleFilled(%f, %f, %f)", x, y, radius)
+
+	for r := radius; r > 0; r -= float32(b.headSize) {
+		b.DrawCircle(x, y, r)
+	}
+
+	b.Commentf("END DrawCircleFilled(%f, %f, %f)", x, y, radius)
+
 	return b
 }
 

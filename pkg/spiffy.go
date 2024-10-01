@@ -132,7 +132,7 @@ func (s *Spiffy) GCode() (string, error) {
 
 	// 2.0: draw circles
 	for _, c := range s.Graph.Circles {
-		builder.DrawCircle(AbsolutePos(c.Cx*s.scale), AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
+		builder.DrawCircleFilled(AbsolutePos(c.Cx*s.scale), AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
 		builder.Separator()
 	}
 
