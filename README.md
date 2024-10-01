@@ -13,7 +13,7 @@ onto a material using a CNC machine.
 - [X] Load SVG file
 - [X] Parse SVG to something GO-readable
 - [ ] Generate GCode from SVG
-   - [X] Paths
+   - [ ] Paths (for now only M (Absolute Move) supported)
    - [X] Circles
    - [X] Rectangles
    - [ ] Bezier curves
@@ -21,3 +21,4 @@ onto a material using a CNC machine.
 
 ## Reference
 - GCode: https://marlinfw.org/docs/gcode/G005.html
+- SVG: https://developer.mozilla.org/en-US/docs/Web/SVG
