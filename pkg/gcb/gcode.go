@@ -122,9 +122,9 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 	return b
 }
 
-// moveRel relative destination x, y.
-// NOTE: moveRel does NOT call Up/Down. It just moves.
-func (b *GCodeBuilder) moveRel(x, y RelativePos) *GCodeBuilder {
+// MoveRel relative destination x, y.
+// NOTE: MoveRel does NOT call Up/Down. It just moves.
+func (b *GCodeBuilder) MoveRel(x, y RelativePos) *GCodeBuilder {
 	b.currentX += HardwareAbsolutePos(x)
 	b.currentY += HardwareAbsolutePos(y)
 	b.code += fmt.Sprintf("G0 X%f Y%f ; move to x %[3]f y %[4]f\n", x, y, b.currentX, b.currentY)
@@ -133,13 +133,13 @@ func (b *GCodeBuilder) moveRel(x, y RelativePos) *GCodeBuilder {
 }
 
 // Move moves to absolute position given
-// NOTE: Move calls moveRel so does NOT call Up/Down. It just moves.
+// NOTE: Move calls MoveRel so does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) Move(x, y AbsolutePos) *GCodeBuilder {
 	b.Commentf("BEGIN Move(%f, %f)", x, y)
 
 	x, y = validateAbs(x, y)
 	relX, relY := b.absToRel(translate(x, y))
-	b.moveRel(relX, relY)
+	b.MoveRel(relX, relY)
 
 	b.Commentf("END Move(%f, %f)", x, y)
 

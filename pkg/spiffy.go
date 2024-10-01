@@ -2,6 +2,7 @@ package spiffy
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -101,23 +102,19 @@ func (s *Spiffy) GCode() (string, error) {
 		txt := line.D
 		txts := strings.Split(txt, " ")
 
-		paths := make([]gcb.BetterPoint, 0, len(txts)-1)
+		// paths := make([]gcb.BetterPoint, 0, len(txts)-1)
 
-		relative := false
-		var currentX, currentY float32
+		var currentType PathType
 		for _, t := range txts {
-			switch t {
-			case "M", "m":
-				relative = false
-				continue
-			case "C", "c":
-				relative = true
+			pathType, ok := PathTypeEnum[t]
+			if ok {
+				currentType = pathType
 				continue
 			}
 
 			parts := strings.Split(t, ",")
 			if len(parts) != 2 {
-				return "", errors.New("Unexpected paths.D parts; Not implemented")
+				return "", fmt.Errorf("Cant split %v: %w", t, errors.New("Unexpected paths.D parts; Not implemented"))
 			}
 
 			xStr, yStr := parts[0], parts[1]
@@ -132,18 +129,58 @@ func (s *Spiffy) GCode() (string, error) {
 				return "", err
 			}
 
-			if relative {
-				currentX += (float32(x) * float32(s.scale))
-				currentY += (float32(y) * float32(s.scale))
-			} else {
-				currentX = (float32(x) * float32(s.scale))
-				currentY = (float32(y) * float32(s.scale))
+			switch currentType {
+			case PathMoveToAbs:
+				builder.Move(gcb.AbsolutePos(x), gcb.AbsolutePos(y))
+			case PathMoveToRel:
+				builder.MoveRel(gcb.RelativePos(x), gcb.RelativePos(y))
+			default:
+				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
-
-			paths = append(paths, gcb.BetterPoint{X: currentX, Y: currentX}) // TODO: loses precision; use custom thing instead of image.Point
 		}
+		/*
+				relative := false
+				var currentX, currentY float32
+				for _, t := range txts {
+					switch t {
+					case "M", "m":
+						relative = false
+						continue
+					case "C", "c":
+						relative = true
+						continue
+					}
 
-		builder.DrawPath(true, paths...)
+					parts := strings.Split(t, ",")
+					if len(parts) != 2 {
+						return "", errors.New("Unexpected paths.D parts; Not implemented")
+					}
+
+					xStr, yStr := parts[0], parts[1]
+					// parse floats
+					x, err := strconv.ParseFloat(xStr, 32)
+					if err != nil {
+						return "", err
+					}
+
+					y, err := strconv.ParseFloat(yStr, 32)
+					if err != nil {
+						return "", err
+					}
+
+					if relative {
+						currentX += (float32(x) * float32(s.scale))
+						currentY += (float32(y) * float32(s.scale))
+					} else {
+						currentX = (float32(x) * float32(s.scale))
+						currentY = (float32(y) * float32(s.scale))
+					}
+
+					paths = append(paths, gcb.BetterPoint{X: currentX, Y: currentX}) // TODO: loses precision; use custom thing instead of image.Point
+				}
+
+			builder.DrawPath(true, paths...)
+		*/
 		builder.Separator()
 	}
 
