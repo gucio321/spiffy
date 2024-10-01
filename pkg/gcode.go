@@ -112,9 +112,9 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 	return b
 }
 
-// Move relative destination x, y.
-// NOTE: Move does NOT call Up/Down. It just moves.
-func (b *GCodeBuilder) Move(x, y RelativePos) *GCodeBuilder {
+// moveRel relative destination x, y.
+// NOTE: moveRel does NOT call Up/Down. It just moves.
+func (b *GCodeBuilder) moveRel(x, y RelativePos) *GCodeBuilder {
 	b.currentX += HardwareAbsolutePos(x)
 	b.currentY += HardwareAbsolutePos(y)
 	b.code += fmt.Sprintf("G0 X%f Y%f ; move to x %[3]f y %[4]f\n", x, y, b.currentX, b.currentY)
@@ -122,12 +122,12 @@ func (b *GCodeBuilder) Move(x, y RelativePos) *GCodeBuilder {
 	return b
 }
 
-// MoveAbs moves to absolute position given
-// NOTE: MoveAbs calls Move so does NOT call Up/Down. It just moves.
-func (b *GCodeBuilder) MoveAbs(x, y AbsolutePos) *GCodeBuilder {
+// Move moves to absolute position given
+// NOTE: Move calls moveRel so does NOT call Up/Down. It just moves.
+func (b *GCodeBuilder) Move(x, y AbsolutePos) *GCodeBuilder {
 	x, y = validateAbs(x, y)
 	relX, relY := b.absToRel(translate(x, y))
-	return b.Move(relX, relY)
+	return b.moveRel(relX, relY)
 }
 
 // WriteComment writes comment to GCode.
@@ -144,13 +144,13 @@ func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 func (b *GCodeBuilder) drawLine(x0, y0, x1, y1 AbsolutePos, careDrawingState bool) *GCodeBuilder {
 	// 1.1: go to x0, y0
 	b.WriteComment("Draw line")
-	b.MoveAbs(x0, y0)
+	b.Move(x0, y0)
 	// 1.2: start drawing
 	if careDrawingState {
 		b.Down()
 	}
 	// 1.3: go to x1, y1
-	b.MoveAbs(x1, y1)
+	b.Move(x1, y1)
 	// 1.4: stop drawing
 	if careDrawingState {
 		b.Up()
@@ -161,18 +161,18 @@ func (b *GCodeBuilder) drawLine(x0, y0, x1, y1 AbsolutePos, careDrawingState boo
 // DrawPath draws a path of lines. Closed if true, will automatically close the path by drawing line from path[n] to path[0].
 func (b *GCodeBuilder) DrawPath(closed bool, path ...image.Point) *GCodeBuilder {
 	b.WriteComment("Drawing path")
-	b.MoveAbs(AbsolutePos(path[0].X), AbsolutePos(path[0].Y))
+	b.Move(AbsolutePos(path[0].X), AbsolutePos(path[0].Y))
 	b.Down()
 	for i := 1; i < len(path); i++ {
 		b.WriteComment(fmt.Sprintf("Line %d", i))
 		p0 := path[i]
-		b.MoveAbs(AbsolutePos(p0.X), AbsolutePos(p0.Y))
+		b.Move(AbsolutePos(p0.X), AbsolutePos(p0.Y))
 	}
 
 	if closed {
 		b.WriteComment("Close path")
 		p0 := path[0]
-		b.MoveAbs(AbsolutePos(p0.X), AbsolutePos(p0.Y))
+		b.Move(AbsolutePos(p0.X), AbsolutePos(p0.Y))
 	}
 
 	b.Up()
@@ -189,7 +189,7 @@ func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuild
 	x, y := translate(xImg, yImg)
 	baseX := xImg
 	baseY := yImg + AbsolutePos(r)
-	b.MoveAbs(baseX, baseY)
+	b.Move(baseX, baseY)
 	// 1.1: do circle
 	relX, relY := b.absToRel(x, y)
 	b.Down()
