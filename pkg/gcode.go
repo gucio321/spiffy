@@ -1,21 +1,25 @@
 package spiffy
 
 import (
-	"errors"
 	"fmt"
 	"image"
-	"strconv"
-	"strings"
 
 	"github.com/kpango/glg"
 )
 
 type (
-	AbsolutePos float32
+	// RelativePos is a position relative to currentX/currentY
 	RelativePos float32
+	// AbsolutePos describes position absolute on the drawing.
+	// starts form 0,0
+	AbsolutePos float32
+	// HardwareAbsolutePos describes a coordinates on Hardware.
+	// This is because our printer has an "offset" from real 0.0 that should be considered (see MinX, MinY)
+	// is AbsolutePos+MinX/MinY
+	HardwareAbsolutePos float32
 )
 
-const Preamble = `;; BEGIN PREAMBUA
+const DefaultPreamble = `;; BEGIN PREAMBUA
 M413 S0 ; Disable power loss recovery
 M107 ; Fan off
 M104 S0 ; Set target temperature
@@ -37,7 +41,7 @@ M204 S2000 ; PRinting and travel speed in mm/s/s
 ;; BEGIN BUA
 `
 
-const Postamble = `;; END BUA
+const DefaultPostamble = `;; END BUA
 
 ;; BEGIN POSTABUA
 M84 X Y Z E ; Disable ALL motors
@@ -45,27 +49,38 @@ M84 X Y Z E ; Disable ALL motors
 `
 
 const (
+	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80
-	MinX, MinY   = 80, 80
-	MaxX, MaxY   = 160, 160
-	BaseDepth    = 20
+	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
+	MinX, MinY = 80, 80
+	MaxX, MaxY = 160, 160
+	BaseDepth  = 20
 )
 
+// GCodeBuilder allows to build GCode. It implements several drawing methods.
+// Its purpose is to convert SVG image to GCode in an easy way. (see (*Spiffy).GCode).
+// NOTE: even considering the comment on HardwareAbsolutePos, all external API for this object
+// uses AbsolutePos - position absolute to image you want to draw (so starting from 0,0)
 type GCodeBuilder struct {
-	code               string
-	depth              int
-	isDrawing          bool
-	currentX, currentY AbsolutePos
+	code                string
+	depth               int
+	isDrawing           bool
+	currentX, currentY  HardwareAbsolutePos
+	preamble, postamble string
 }
 
+// NewGCodeBuilder creates new GCodeBuilder with default values.
 func NewGCodeBuilder() *GCodeBuilder {
 	return &GCodeBuilder{
-		currentX: BaseX,
-		currentY: BaseY,
-		depth:    BaseDepth,
+		currentX:  BaseX,
+		currentY:  BaseY,
+		depth:     BaseDepth,
+		preamble:  DefaultPreamble,
+		postamble: DefaultPostamble,
 	}
 }
 
+// SetDepth sets how deep the Heas should go.
 func (b *GCodeBuilder) SetDepth(depth int) *GCodeBuilder {
 	b.depth = depth
 	return b
@@ -97,37 +112,32 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 	return b
 }
 
-// Move relatively to.
+// Move relative destination x, y.
+// NOTE: Move does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) Move(x, y RelativePos) *GCodeBuilder {
 	b.code += fmt.Sprintf("G0 X%f Y%f ; move to x%[1]f y%[2]f\n", x, y)
-	b.currentX += AbsolutePos(x)
-	b.currentY += AbsolutePos(y)
+	b.currentX += HardwareAbsolutePos(x)
+	b.currentY += HardwareAbsolutePos(y)
+	validateHwAbs(b.currentX, b.currentY)
 	return b
 }
 
 // MoveAbs moves to absolute position given
+// NOTE: MoveAbs calls Move so does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) MoveAbs(x, y AbsolutePos) *GCodeBuilder {
 	x, y = validateAbs(x, y)
-	relX, relY := b.absToRel(x, y)
+	relX, relY := b.absToRel(translate(x, y))
 	return b.Move(relX, relY)
 }
 
-func (b *GCodeBuilder) relToAbs(x, y RelativePos) (AbsolutePos, AbsolutePos) {
-	return validateAbs(b.currentX+AbsolutePos(x), b.currentY+AbsolutePos(y))
-}
-
-func (b *GCodeBuilder) absToRel(x, y AbsolutePos) (RelativePos, RelativePos) {
-	return RelativePos(x - b.currentX), RelativePos(y - b.currentY)
-}
-
+// WriteComment writes comment to GCode.
 func (b *GCodeBuilder) WriteComment(comment string) *GCodeBuilder {
 	b.code += fmt.Sprintf("; %s\n", comment)
 	return b
 }
 
+// DrawLine draws a line from (x0, y0) to (x1, y1).
 func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
-	x0, y0 = translate(x0, y0)
-	x1, y1 = translate(x1, y1)
 	// 1.1: go to x0, y0
 	b.WriteComment("Draw line")
 	b.MoveAbs(x0, y0)
@@ -140,7 +150,8 @@ func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 	return b
 }
 
-func (b *GCodeBuilder) DrawPath(path ...image.Point) *GCodeBuilder {
+// DrawPath draws a path of lines. Closed if true, will automatically close the path by drawing line from path[n] to path[0].
+func (b *GCodeBuilder) DrawPath(closed bool, path ...image.Point) *GCodeBuilder {
 	b.WriteComment("Drawing path")
 	for i := 0; i < len(path)-1; i++ {
 		b.WriteComment(fmt.Sprintf("Line %d", i))
@@ -149,18 +160,25 @@ func (b *GCodeBuilder) DrawPath(path ...image.Point) *GCodeBuilder {
 		b.DrawLine(AbsolutePos(p0.X), AbsolutePos(p0.Y), AbsolutePos(p1.X), AbsolutePos(p1.Y))
 	}
 
+	if closed {
+		b.WriteComment("Close path")
+		p0 := path[len(path)-1]
+		p1 := path[0]
+		b.DrawLine(AbsolutePos(p0.X), AbsolutePos(p0.Y), AbsolutePos(p1.X), AbsolutePos(p1.Y))
+	}
+
 	b.WriteComment("Path finished")
 
 	return b
 }
 
-func (b *GCodeBuilder) DrawCircle(x, y AbsolutePos, r float32) *GCodeBuilder {
+// DrawCircle draws circle on absolute (x,y) with radius r.
+func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuilder {
 	b.WriteComment("Draw circle")
 	// 1.0: find x,y to move
-	x, y = translate(x, y)
-	baseX := x
-	baseY := y + AbsolutePos(r)
-	validateAbs(baseX, baseY)
+	x, y := translate(xImg, yImg)
+	baseX := xImg
+	baseY := yImg + AbsolutePos(r)
 	b.MoveAbs(baseX, baseY)
 	// 1.1: do circle
 	relX, relY := b.absToRel(x, y)
@@ -170,68 +188,46 @@ func (b *GCodeBuilder) DrawCircle(x, y AbsolutePos, r float32) *GCodeBuilder {
 	return b
 }
 
+// String returns built GCode.
 func (b *GCodeBuilder) String() string {
-	return fmt.Sprintf("%s\n%s\n%s", Preamble, b.code, Postamble)
+	return fmt.Sprintf("%s\n%s\n%s", b.preamble, b.code, b.postamble)
 }
 
-// GCode returns single-purpose GCode for our project.
-func (s *Spiffy) GCode() (string, error) {
-	builder := NewGCodeBuilder()
+func (b *GCodeBuilder) relToAbs(x, y RelativePos) (HardwareAbsolutePos, HardwareAbsolutePos) {
+	return validateHwAbs(b.currentX+HardwareAbsolutePos(x), b.currentY+HardwareAbsolutePos(y))
+}
 
-	for _, line := range s.Graph.Paths {
-		txt := line.D
-		txts := strings.Split(txt, " ")
-		if txts[0] != "M" {
-			return "", errors.New("Unexpected paths.D prefix; Not implemented")
-		}
-
-		paths := make([]image.Point, 0, len(txts)-1)
-
-		for _, t := range txts[1:] {
-			parts := strings.Split(t, ",")
-			if len(parts) != 2 {
-				return "", errors.New("Unexpected paths.D parts; Not implemented")
-			}
-
-			xStr, yStr := parts[0], parts[1]
-			// parse floats
-			x, err := strconv.ParseFloat(xStr, 32)
-			if err != nil {
-				return "", err
-			}
-
-			y, err := strconv.ParseFloat(yStr, 32)
-			if err != nil {
-				return "", err
-			}
-
-			paths = append(paths, image.Point{X: int(x), Y: int(y)}) // TODO: loses precision; use custom thing instead of image.Point
-		}
-
-		builder.DrawPath(paths...)
-	}
-
-	builder.DrawCircle(10, 10, 10)
-
-	result := builder.String()
-	return result, nil
+func (b *GCodeBuilder) absToRel(x, y HardwareAbsolutePos) (RelativePos, RelativePos) {
+	return RelativePos(x - b.currentX), RelativePos(y - b.currentY)
 }
 
 func validateAbs(x, y AbsolutePos) (AbsolutePos, AbsolutePos) {
 	switch {
+	case x < 0:
+		glg.Fatalf("Absolute position must be positive, got %f", x)
+	case y < 0:
+		glg.Fatalf("Absolute position must be positive, got %f", y)
+	}
+
+	return x, y
+}
+
+func validateHwAbs(x, y HardwareAbsolutePos) (HardwareAbsolutePos, HardwareAbsolutePos) {
+	switch {
 	case x < MinX:
 		glg.Fatalf("Absolute position must be larger than %f, got %f", MinX, x)
-	case x > MaxX: // we assume BaseX is a center
+	case x > MaxX:
 		glg.Fatalf("Absolute position must be less than %f, got %f", MaxX, x)
 	case y < MinY:
 		glg.Fatalf("Absolute position must be larger than %f, got %f", MinY, y)
-	case y > MaxY: // we assume BaseY is a center
+	case y > MaxY:
 		glg.Fatalf("Absolute position must be less than %f, got %f", MaxY, y)
 	}
 
 	return x, y
 }
 
-func translate(x, y AbsolutePos) (AbsolutePos, AbsolutePos) {
-	return x + MinX, y + MinY
+// translate converts AbsolutePos to HardwareAbsolutePos by adding MinX/Y
+func translate(x, y AbsolutePos) (HardwareAbsolutePos, HardwareAbsolutePos) {
+	return validateHwAbs(HardwareAbsolutePos(x+MinX), HardwareAbsolutePos(y+MinY))
 }

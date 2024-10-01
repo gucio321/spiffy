@@ -1,6 +1,14 @@
 package spiffy
 
+import (
+	"errors"
+	"image"
+	"strconv"
+	"strings"
+)
+
 type Spiffy struct {
+	scale float32
 	Defs  Defs  `xml:"defs"`
 	Graph Graph `xml:"g"`
 }
@@ -76,4 +84,52 @@ type Tspan struct {
 type Tspan2 struct {
 	Style string `xml:"style,attr"`
 	Text  string `xml:",chardata"`
+}
+
+func (s *Spiffy) Scale(scale float32) *Spiffy {
+	s.scale = scale
+	return s
+}
+
+// GCode returns single-purpose GCode for our project.
+func (s *Spiffy) GCode() (string, error) {
+	builder := NewGCodeBuilder()
+
+	for _, line := range s.Graph.Paths {
+		txt := line.D
+		txts := strings.Split(txt, " ")
+		if txts[0] != "M" {
+			return "", errors.New("Unexpected paths.D prefix; Not implemented")
+		}
+
+		paths := make([]image.Point, 0, len(txts)-1)
+
+		for _, t := range txts[1:] {
+			parts := strings.Split(t, ",")
+			if len(parts) != 2 {
+				return "", errors.New("Unexpected paths.D parts; Not implemented")
+			}
+
+			xStr, yStr := parts[0], parts[1]
+			// parse floats
+			x, err := strconv.ParseFloat(xStr, 32)
+			if err != nil {
+				return "", err
+			}
+
+			y, err := strconv.ParseFloat(yStr, 32)
+			if err != nil {
+				return "", err
+			}
+
+			paths = append(paths, image.Point{X: int(x * float64(s.scale)), Y: int(y * float64(s.scale))}) // TODO: loses precision; use custom thing instead of image.Point
+		}
+
+		builder.DrawPath(true, paths...)
+	}
+
+	// builder.DrawCircle(10, 10, 10)
+
+	result := builder.String()
+	return result, nil
 }
