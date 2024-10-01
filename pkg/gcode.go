@@ -237,11 +237,11 @@ func validateHwAbs(x, y HardwareAbsolutePos) (HardwareAbsolutePos, HardwareAbsol
 	case x < MinX:
 		glg.Fatalf("Absolute position must be larger than %f, got %f", MinX, x)
 	case x > MaxX:
-		glg.Fatalf("Absolute position must be less than %f, got %f", MaxX, x)
+		glg.Fatalf("Absolute position must be less than %v, got %f", MaxX, x)
 	case y < MinY:
 		glg.Fatalf("Absolute position must be larger than %f, got %f", MinY, y)
 	case y > MaxY:
-		glg.Fatalf("Absolute position must be less than %f, got %f", MaxY, y)
+		glg.Fatalf("Absolute position must be less than %v, got %f", MaxY, y)
 	}
 
 	return x, y

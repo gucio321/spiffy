@@ -95,6 +95,7 @@ func (s *Spiffy) Scale(scale float32) *Spiffy {
 func (s *Spiffy) GCode() (string, error) {
 	builder := NewGCodeBuilder()
 
+	// 1.0: draw paths
 	for _, line := range s.Graph.Paths {
 		txt := line.D
 		txts := strings.Split(txt, " ")
@@ -128,7 +129,10 @@ func (s *Spiffy) GCode() (string, error) {
 		builder.DrawPath(true, paths...)
 	}
 
-	// builder.DrawCircle(10, 10, 10)
+	// 2.0: draw circles
+	for _, c := range s.Graph.Circles {
+		builder.DrawCircle(AbsolutePos(c.Cx*s.scale), AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
+	}
 
 	result := builder.String()
 	return result, nil
