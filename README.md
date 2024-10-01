@@ -1,3 +1,6 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/gucio321/spiffy)](https://goreportcard.com/report/github.com/gucio321/spiffy)
+[![GoDoc](https://pkg.go.dev/badge/github.com/gucio321/spiffy?utm_source=godoc)](https://pkg.go.dev/mod/github.com/gucio321/spiffy)
+
 # INTRO
 
 Spiffy is a SVG to GCode converter.
