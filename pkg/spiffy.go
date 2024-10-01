@@ -127,11 +127,13 @@ func (s *Spiffy) GCode() (string, error) {
 		}
 
 		builder.DrawPath(true, paths...)
+		builder.Separator()
 	}
 
 	// 2.0: draw circles
 	for _, c := range s.Graph.Circles {
 		builder.DrawCircle(AbsolutePos(c.Cx*s.scale), AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
+		builder.Separator()
 	}
 
 	result := builder.String()

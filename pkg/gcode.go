@@ -3,6 +3,7 @@ package spiffy
 import (
 	"fmt"
 	"image"
+	"math"
 
 	"github.com/kpango/glg"
 )
@@ -146,6 +147,12 @@ func (b *GCodeBuilder) Commentf(format string, args ...interface{}) *GCodeBuilde
 	return b.Comment(fmt.Sprintf(format, args...))
 }
 
+// Separator is for nice code layout
+func (b *GCodeBuilder) Separator() *GCodeBuilder {
+	b.Comment("")
+	return b
+}
+
 // DrawLine draws a line from (x0, y0) to (x1, y1).
 func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 	b.Commentf("BEGIN DrawLine(%f, %f, %f, %f)", x0, y0, x1, y1)
@@ -205,6 +212,33 @@ func (b *GCodeBuilder) DrawCircle(xImg, yImg AbsolutePos, r float32) *GCodeBuild
 	b.Up()
 
 	b.Commentf("END DrawCircle(%f, %f, %f)", xImg, yImg, r)
+	return b
+}
+
+// DrawSector draws a sector (part of circle) on absolute (x,y) with radius r.
+// start is a RADIAL angle where to start, end is a RADIAL angle where to end.
+// NOTE: start/end 0 point is positive X axis. Angle is counterclockwise.
+// TODO: this is not tested yet. test on e.g. .DrawSector(10,10,10,0,math.Pi/2)
+func (b *GCodeBuilder) DrawSector(xImg, yImg AbsolutePos, radius float32, start, end float32) *GCodeBuilder {
+	b.Commentf("BEGIN DrawSector(%f, %f, %f, %f, %f)", xImg, yImg, radius, start, end)
+
+	// 1.0: find x,y to move
+	x, y := translate(xImg, yImg)
+	baseX := xImg + AbsolutePos(math.Cos(float64(start))*float64(radius))
+	baseY := yImg + AbsolutePos(math.Sin(float64(start))*float64(radius))
+	b.Move(baseX, baseY)
+	// 1.1: find final x,y
+	finalX := xImg + AbsolutePos(math.Cos(float64(end))*float64(radius))
+	finalY := yImg + AbsolutePos(math.Sin(float64(end))*float64(radius))
+	relFinalX, relFinalY := b.absToRel(translate(finalX, finalY))
+	// 1.2: do circle
+	relX, relY := b.absToRel(x, y)
+	b.Down()
+	b.code += fmt.Sprintf("G3 I%[1]f J%[2]f X%[3]f Y%[4]f; Draw circle with center in %[1]f and %[2]f with radius %[5]f\n", relX, relY, relFinalX, relFinalY, radius)
+	b.currentX, b.currentY = translate(finalX, finalY)
+	b.Up()
+
+	b.Commentf("END DrawSector(%f, %f, %f, %f, %f)", x, y, radius, start, end)
 	return b
 }
 
