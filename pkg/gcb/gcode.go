@@ -3,7 +3,6 @@ package gcb
 
 import (
 	"fmt"
-	"image"
 	"math"
 
 	"github.com/kpango/glg"
@@ -182,7 +181,7 @@ func (b *GCodeBuilder) DrawLine(x0, y0, x1, y1 AbsolutePos) *GCodeBuilder {
 }
 
 // DrawPath draws a path of lines. Closed if true, will automatically close the path by drawing line from path[n] to path[0].
-func (b *GCodeBuilder) DrawPath(closed bool, path ...image.Point) *GCodeBuilder {
+func (b *GCodeBuilder) DrawPath(closed bool, path ...BetterPoint) *GCodeBuilder {
 	b.Commentf("BEGIN DrawPath(%v, %v)", closed, path)
 
 	b.Move(AbsolutePos(path[0].X), AbsolutePos(path[0].Y))

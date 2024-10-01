@@ -2,7 +2,6 @@ package spiffy
 
 import (
 	"errors"
-	"image"
 	"strconv"
 	"strings"
 
@@ -101,13 +100,21 @@ func (s *Spiffy) GCode() (string, error) {
 	for _, line := range s.Graph.Paths {
 		txt := line.D
 		txts := strings.Split(txt, " ")
-		if txts[0] != "M" {
-			return "", errors.New("Unexpected paths.D prefix; Not implemented")
-		}
 
-		paths := make([]image.Point, 0, len(txts)-1)
+		paths := make([]gcb.BetterPoint, 0, len(txts)-1)
 
-		for _, t := range txts[1:] {
+		relative := false
+		var currentX, currentY float32
+		for _, t := range txts {
+			switch t {
+			case "M", "m":
+				relative = false
+				continue
+			case "C", "c":
+				relative = true
+				continue
+			}
+
 			parts := strings.Split(t, ",")
 			if len(parts) != 2 {
 				return "", errors.New("Unexpected paths.D parts; Not implemented")
@@ -125,7 +132,15 @@ func (s *Spiffy) GCode() (string, error) {
 				return "", err
 			}
 
-			paths = append(paths, image.Point{X: int(x * float64(s.scale)), Y: int(y * float64(s.scale))}) // TODO: loses precision; use custom thing instead of image.Point
+			if relative {
+				currentX += (float32(x) * float32(s.scale))
+				currentY += (float32(y) * float32(s.scale))
+			} else {
+				currentX = (float32(x) * float32(s.scale))
+				currentY = (float32(y) * float32(s.scale))
+			}
+
+			paths = append(paths, gcb.BetterPoint{X: currentX, Y: currentX}) // TODO: loses precision; use custom thing instead of image.Point
 		}
 
 		builder.DrawPath(true, paths...)
