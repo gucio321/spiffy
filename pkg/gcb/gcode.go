@@ -111,9 +111,9 @@ func (b *GCodeBuilder) PushCommand(c ...Command) *GCodeBuilder {
 }
 
 // Up stops active drawing
-func (b *GCodeBuilder) Up() *GCodeBuilder {
+func (b *GCodeBuilder) Up() error {
 	if !b.isDrawing {
-		glg.Fatalf("Up called, but not drawing! %s", b.commands)
+		return fmt.Errorf("called up but its already up: %w", ErrCantChangeDrawingState)
 	}
 
 	b.PushCommand(Command{
@@ -129,13 +129,13 @@ func (b *GCodeBuilder) Up() *GCodeBuilder {
 
 	b.isDrawing = false
 
-	return b
+	return nil
 }
 
 // Down starts drawing
-func (b *GCodeBuilder) Down() *GCodeBuilder {
+func (b *GCodeBuilder) Down() error {
 	if b.isDrawing {
-		glg.Fatalf("Down called, but already drawing! %s", b.commands)
+		return fmt.Errorf("called Down but its already down: %w", ErrCantChangeDrawingState)
 	}
 
 	b.PushCommand(Command{
@@ -151,31 +151,37 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 
 	b.isDrawing = true
 
-	return b
+	return nil
 }
 
 // BeginContinousLine starts drawing a continous line.
 // Every draw command's starting point should be b.Current() (and this will be checked and will panic if not true).
 // Then, no Up()/Down() will be called automatically.
-func (b *GCodeBuilder) BeginContinousLine() *GCodeBuilder {
+func (b *GCodeBuilder) BeginContinousLine() error {
 	if b.continousLine {
-		glg.Fatalf("BeginContinousLine called, but already drawing continous line! %s", b.commands)
+		return fmt.Errorf("Called BeginContinousLine but already drawing continous line: %w", ErrCantChangeDrawingState)
 	}
 
-	b.Down()
+	if err := b.Down(); err != nil {
+		return err
+	}
+
 	b.continousLine = true
-	return b
+	return nil
 }
 
 // EndContinousLine stops drawing a continous line.
-func (b *GCodeBuilder) EndContinousLine() *GCodeBuilder {
+func (b *GCodeBuilder) EndContinousLine() error {
 	if !b.continousLine {
-		glg.Fatalf("EndContinousLine called, but not drawing continous line! %s", b.commands)
+		return fmt.Errorf("Called EndContinousLine but not drawing continous line: %w", ErrCantChangeDrawingState)
 	}
 
-	b.Up()
+	if err := b.Up(); err != nil {
+		return err
+	}
+
 	b.continousLine = false
-	return b
+	return nil
 }
 
 // moveRel relative destination x, y.
