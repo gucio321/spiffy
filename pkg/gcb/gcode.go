@@ -131,6 +131,16 @@ func (b *GCodeBuilder) Up() error {
 	return nil
 }
 
+func (b *GCodeBuilder) stopDrawing() error {
+	if !b.continousLine {
+		if err := b.Up(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Down starts drawing
 func (b *GCodeBuilder) Down() error {
 	if b.isDrawing {
@@ -149,6 +159,23 @@ func (b *GCodeBuilder) Down() error {
 	})
 
 	b.isDrawing = true
+
+	return nil
+}
+
+// startDrawing moves to the starting point and calls Down
+func (b *GCodeBuilder) startDrawing(p BetterPoint[AbsolutePos]) error {
+	// 1.0: check if we are already drawing a continous line (if so check positions and return)
+	if b.continousLine && p != b.Current() {
+		return fmt.Errorf("should continue drawing at %v but estimated start position is %v: %w", b.currentP, p, ErrInvalidContinousLineContinuation)
+	}
+
+	// 1.1: go to x0, y0
+	b.Move(p)
+	// 1.2: start drawing
+	if err := b.Down(); err != nil {
+		return err
+	}
 
 	return nil
 }
