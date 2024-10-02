@@ -131,9 +131,9 @@ func (s *Spiffy) GCode() (string, error) {
 
 			switch currentType {
 			case PathMoveToAbs:
-				builder.Move(gcb.AbsolutePos(x), gcb.AbsolutePos(y))
+				builder.Move(gcb.BetterPoint[gcb.AbsolutePos]{gcb.AbsolutePos(x), gcb.AbsolutePos(y)})
 			case PathMoveToRel:
-				builder.MoveRel(gcb.RelativePos(x), gcb.RelativePos(y))
+				builder.MoveRel(gcb.BetterPoint[gcb.RelativePos]{gcb.RelativePos(x), gcb.RelativePos(y)})
 			default:
 				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
@@ -186,13 +186,13 @@ func (s *Spiffy) GCode() (string, error) {
 
 	// 2.0: draw circles
 	for _, c := range s.Graph.Circles {
-		builder.DrawCircleFilled(gcb.AbsolutePos(c.Cx*s.scale), gcb.AbsolutePos(c.Cy*s.scale), (c.R * s.scale))
+		builder.DrawCircleFilled(gcb.BetterPoint[gcb.AbsolutePos]{gcb.AbsolutePos(c.Cx * s.scale), gcb.AbsolutePos(c.Cy * s.scale)}, (c.R * s.scale))
 		builder.Separator()
 	}
 
 	// 2.1: draw rects
 	for _, r := range s.Graph.Rects {
-		builder.DrawRectFilled(gcb.AbsolutePos(r.X*s.scale), gcb.AbsolutePos(r.Y*s.scale), gcb.AbsolutePos(r.X*s.scale+r.W*s.scale), gcb.AbsolutePos(r.Y*s.scale+r.H*s.scale))
+		builder.DrawRectFilled(gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale), gcb.AbsolutePos(r.Y*s.scale)), gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale+r.W*s.scale), gcb.AbsolutePos(r.Y*s.scale+r.H*s.scale)))
 	}
 
 	result := builder.String()
