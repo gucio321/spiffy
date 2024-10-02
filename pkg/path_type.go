@@ -25,6 +25,8 @@ const (
 	PathCubicBezierCurveAbs // C
 	// c - cubic bezier curve to relative pos (3 args)(controlPoint1, controlPoint2, endPoint)
 	PathCubicBezierCurveRel // c
+	PathCloseAbs            // Z
+	PathCloseRel            // z
 	END
 )
 

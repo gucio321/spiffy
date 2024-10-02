@@ -121,23 +121,17 @@ func (s *Spiffy) GCode() (string, error) {
 			if ok {
 				currentType = pathType
 				glg.Debugf("Setting current operation type to %s", currentType)
-				continue
 			}
 
-			parts := strings.Split(t, ",")
-			if len(parts) != 2 {
-				return "", fmt.Errorf("Cant split %v: %w", t, errors.New("Unexpected paths.D parts; Not implemented"))
-			}
-
-			xStr, yStr := parts[0], parts[1]
 			// parse floats
-			pSrc, err := ptFromStr[float32](xStr, yStr)
-			if err != nil {
-				return "", err
-			}
-
+			pSrc, err := parseStr[float32](t)
 			switch currentType {
 			case PathMoveToAbs:
+				if err != nil {
+					continue
+				}
+
+				cache = append(cache, pSrc)
 				if isDrawing {
 					builder.EndContinousLine()
 				}
@@ -148,7 +142,12 @@ func (s *Spiffy) GCode() (string, error) {
 
 				isDrawing = true
 				builder.BeginContinousLine()
+				cache = nil
 			case PathMoveToRel:
+				if err != nil {
+					continue
+				}
+
 				if isDrawing {
 					builder.EndContinousLine()
 				}
@@ -159,9 +158,12 @@ func (s *Spiffy) GCode() (string, error) {
 
 				isDrawing = true
 				builder.BeginContinousLine()
+				cache = nil
 			case PathCubicBezierCurveRel:
 				// read 3 args
 				switch {
+				case err != nil:
+					continue
 				case cache == nil:
 					cache = make([]gcb.BetterPoint[float32], 0, 3)
 					fallthrough
@@ -183,6 +185,8 @@ func (s *Spiffy) GCode() (string, error) {
 			case PathCubicBezierCurveAbs:
 				// read 3 args
 				switch {
+				case err != nil:
+					continue
 				case cache == nil:
 					cache = make([]gcb.BetterPoint[float32], 0, 3)
 					fallthrough
@@ -200,6 +204,14 @@ func (s *Spiffy) GCode() (string, error) {
 					// clean cache
 					cache = nil
 				}
+			case PathCloseAbs, PathCloseRel:
+				// 1st is 1st command, 2nd is what we want:
+				p1, err := parseStr[gcb.AbsolutePos](txts[1])
+				if err != nil {
+					return "", err
+				}
+
+				builder.DrawLine(builder.Current(), p1)
 			default:
 				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
@@ -238,4 +250,15 @@ func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {
 	}
 
 	return gcb.BetterPt(T(x), T(y)), nil
+}
+
+func parseStr[T ~float32](t string) (gcb.BetterPoint[T], error) {
+	parts := strings.Split(t, ",")
+	if len(parts) != 2 {
+		return gcb.BetterPt[T](0, 0), fmt.Errorf("Cant split %v: %w", t, errors.New("Unexpected paths.D parts; Not implemented"))
+	}
+
+	xStr, yStr := parts[0], parts[1]
+
+	return ptFromStr[T](xStr, yStr)
 }

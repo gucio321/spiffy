@@ -18,11 +18,14 @@ func _() {
 	_ = x[PathLineToVerticalRel-7]
 	_ = x[PathCubicBezierCurveAbs-8]
 	_ = x[PathCubicBezierCurveRel-9]
+	_ = x[PathCloseAbs-10]
+	_ = x[PathCloseRel-11]
+	_ = x[END-12]
 }
 
-const _PathType_name = "MmLlHhVvCc"
+const _PathType_name = "MmLlHhVvCcZzEND"
 
-var _PathType_index = [...]uint8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+var _PathType_index = [...]uint8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15}
 
 func (i PathType) String() string {
 	if i < 0 || i >= PathType(len(_PathType_index)-1) {
