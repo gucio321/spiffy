@@ -101,7 +101,7 @@ func (s *Spiffy) Scale(scale float32) *Spiffy {
 }
 
 // GCode returns single-purpose GCode for our project.
-func (s *Spiffy) GCode() (string, error) {
+func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 	builder := gcb.NewGCodeBuilder()
 
 	// 1.0: draw paths
@@ -208,12 +208,12 @@ func (s *Spiffy) GCode() (string, error) {
 				// 1st is 1st command, 2nd is what we want:
 				p1, err := parseStr[gcb.AbsolutePos](txts[1])
 				if err != nil {
-					return "", err
+					return nil, err
 				}
 
 				builder.DrawLine(builder.Current(), p1)
 			default:
-				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
+				return nil, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
 		}
 
@@ -233,8 +233,7 @@ func (s *Spiffy) GCode() (string, error) {
 		builder.DrawRectFilled(gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale), gcb.AbsolutePos(r.Y*s.scale)), gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale+r.W*s.scale), gcb.AbsolutePos(r.Y*s.scale+r.H*s.scale)))
 	}
 
-	result := builder.String()
-	return result, nil
+	return builder, nil
 }
 
 func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {

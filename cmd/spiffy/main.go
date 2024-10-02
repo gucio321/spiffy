@@ -47,7 +47,7 @@ func main() {
 	fmt.Println(gcode)
 
 	if f.outputFilePath != "" {
-		if err := os.WriteFile(f.outputFilePath, []byte(gcode), 0644); err != nil {
+		if err := os.WriteFile(f.outputFilePath, []byte(gcode.String()), 0644); err != nil {
 			glg.Fatalf("Cannot write file %s: %v", f.outputFilePath, err)
 		}
 	}
