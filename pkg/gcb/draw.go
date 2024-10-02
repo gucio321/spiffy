@@ -15,14 +15,8 @@ func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 		LineComment: fmt.Sprintf("Move to %v", b.currentP),
 		Code:        "G0",
 		Args: []Arg{
-			{
-				Name:  "X",
-				Value: b.currentP.X,
-			},
-			{
-				Name:  "Y",
-				Value: b.currentP.Y,
-			},
+			{"X", b.currentP.X},
+			{"Y", b.currentP.Y},
 		},
 	})
 
@@ -46,11 +40,9 @@ func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
 
 // Comment writes comment to GCode.
 func (b *GCodeBuilder) Comment(comment string) *GCodeBuilder {
-	if b.comments {
-		b.PushCommand(Command{
-			LineComment: comment,
-		})
-	}
+	b.PushCommand(Command{
+		LineComment: comment,
+	})
 
 	return b
 }

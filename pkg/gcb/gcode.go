@@ -4,6 +4,8 @@ package gcb
 import (
 	"fmt"
 	"runtime"
+	"slices"
+	"strings"
 
 	"github.com/kpango/glg"
 )
@@ -57,7 +59,8 @@ const (
 // NOTE: even considering the comment on HardwareAbsolutePos, all external API for this object
 // uses AbsolutePos - position absolute to image you want to draw (so starting from 0,0)
 type GCodeBuilder struct {
-	comments            bool
+	lineComments        bool
+	commentsAbove       bool
 	commands            []Command
 	depth               int
 	headSize            int
@@ -70,7 +73,8 @@ type GCodeBuilder struct {
 // NewGCodeBuilder creates new GCodeBuilder with default values.
 func NewGCodeBuilder() *GCodeBuilder {
 	return &GCodeBuilder{
-		comments:      true,
+		lineComments:  true,
+		commentsAbove: false,
 		currentP:      BetterPoint[HardwareAbsolutePos]{BaseX, BaseY},
 		depth:         BaseDepth,
 		headSize:      DefaultHeadSize,
@@ -80,8 +84,9 @@ func NewGCodeBuilder() *GCodeBuilder {
 	}
 }
 
-func (b *GCodeBuilder) Comments(c bool) *GCodeBuilder {
-	b.comments = c
+func (b *GCodeBuilder) Comments(line, above bool) *GCodeBuilder {
+	b.lineComments = line
+	b.commentsAbove = above
 	return b
 }
 
@@ -159,8 +164,11 @@ func (b *GCodeBuilder) Down() error {
 // startDrawing moves to the starting point and calls Down
 func (b *GCodeBuilder) startDrawing(p BetterPoint[AbsolutePos]) error {
 	// 1.0: check if we are already drawing a continous line (if so check positions and return)
-	if b.continousLine && p != b.Current() {
-		return fmt.Errorf("should continue drawing at %v but estimated start position is %v: %w", b.currentP, p, ErrInvalidContinousLineContinuation)
+	if b.continousLine {
+		if p != b.Current() {
+			return fmt.Errorf("should continue drawing at %v but estimated start position is %v: %w", b.currentP, p, ErrInvalidContinousLineContinuation)
+		}
+		return nil
 	}
 
 	// 1.1: go to x0, y0
@@ -213,12 +221,49 @@ func (b *GCodeBuilder) String() string {
 	// actual build:
 	result := b.preamble
 	for _, c := range b.commands {
-		result += c.String(b.comments) + "\n"
+		s := c.String(b.lineComments, b.commentsAbove)
+		if s == "" {
+			continue
+		}
+
+		result += s + "\n"
 	}
 
 	result += b.postamble
 
-	return result
+	// now a bit tricky part.
+	// if comment is a linecomment, align it with other comments
+	// if not leave.
+	longest := 0
+	for _, line := range strings.Split(result, "\n") {
+		if strings.HasPrefix(line, " ;") || strings.HasPrefix(line, ";;") {
+			continue
+		}
+
+		l := strings.Split(line, ";")[0]
+		if len(l) > longest {
+			longest = len(l)
+		}
+	}
+
+	// align comments
+	lines := strings.Split(result, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, " ;") || strings.HasPrefix(line, ";;") {
+			continue
+		}
+
+		parts := strings.Split(line, ";")
+
+		if len(parts) == 1 {
+			continue // no comment
+		}
+
+		line = strings.Join(parts, fmt.Sprintf("%s;", string(slices.Repeat[[]byte]([]byte(" "), longest-len(parts[0])))))
+		lines[i] = line
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (b *GCodeBuilder) RelToAbs(p BetterPoint[RelativePos]) BetterPoint[AbsolutePos] {
@@ -234,6 +279,12 @@ func (b *GCodeBuilder) relToHwAbs(p BetterPoint[RelativePos]) BetterPoint[Hardwa
 
 func (b *GCodeBuilder) absToRel(p BetterPoint[HardwareAbsolutePos]) BetterPoint[RelativePos] {
 	return Redefine[RelativePos](p.Add(b.currentP.Mul(-1)))
+}
+
+// Dump prints all current commands to stdout
+func (b *GCodeBuilder) Dump() {
+	glg.Infof("Dumping commands:")
+	fmt.Println(glg.Yellow(fmt.Sprintf("%#v", b)))
 }
 
 func validateAbs(p BetterPoint[AbsolutePos]) BetterPoint[AbsolutePos] {

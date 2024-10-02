@@ -184,7 +184,10 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 
 					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
-					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
+					if err := builder.DrawBezierCubic(builder.Current(), p0, p1, p2); err != nil {
+						return builder, err
+					}
+
 					// clean cache
 					cache = nil
 				}
@@ -206,7 +209,9 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale))
 					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
-					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
+					if err := builder.DrawBezierCubic(builder.Current(), p0, p1, p2); err != nil {
+						return builder, err
+					}
 					// clean cache
 					cache = nil
 				}
@@ -214,12 +219,12 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 				// 1st is 1st command, 2nd is what we want:
 				p1, err := parseStr[gcb.AbsolutePos](txts[1])
 				if err != nil {
-					return nil, err
+					return builder, err
 				}
 
 				builder.DrawLine(builder.Current(), p1)
 			default:
-				return nil, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
+				return builder, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
 		}
 

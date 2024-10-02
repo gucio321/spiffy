@@ -11,20 +11,24 @@ type Command struct {
 	LineComment string
 }
 
-func (c *Command) String(comments bool) string {
+func (c *Command) String(line, above bool) string {
 	result := c.Code
 	for _, arg := range c.Args {
 		result += fmt.Sprintf(" %v%v", arg.Name, arg.Value)
 	}
 
-	if c.LineComment != "" && comments {
-		result += fmt.Sprintf(" ; %v", c.LineComment)
+	if c.LineComment != "" {
+		switch {
+		case (line && c.Code != "") || (above && c.Code == ""):
+			result += fmt.Sprintf(" ; %v", c.LineComment)
+		}
 	}
 
 	// merge duplicated spaces
 	for {
 		old := result
 		result = strings.ReplaceAll(result, "  ", " ")
+		result = strings.ReplaceAll(result, "\n\n", "\n")
 		if old == result {
 			break
 		}
