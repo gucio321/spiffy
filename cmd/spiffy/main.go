@@ -14,6 +14,7 @@ type flags struct {
 	inputFilePath  string
 	outputFilePath string
 	scale          float64
+	noComments     bool
 }
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	flag.StringVar(&f.inputFilePath, "i", "", "input file path")
 	flag.StringVar(&f.outputFilePath, "o", "", "output file path")
 	flag.Float64Var(&f.scale, "s", 1.0, "scale factor")
+	flag.BoolVar(&f.noComments, "no-comment", false, "don't generate comments")
 	flag.Parse()
 
 	if _, err := os.Stat(f.inputFilePath); os.IsNotExist(err) {
@@ -39,6 +41,10 @@ func main() {
 	}
 
 	result.Scale(float32(f.scale))
+	if f.noComments {
+		result.NoComment()
+	}
+
 	gcode, err := result.GCode()
 	if err != nil {
 		glg.Fatalf("Cannot generate GCode: %v", err)

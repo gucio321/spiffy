@@ -65,6 +65,7 @@ const (
 // NOTE: even considering the comment on HardwareAbsolutePos, all external API for this object
 // uses AbsolutePos - position absolute to image you want to draw (so starting from 0,0)
 type GCodeBuilder struct {
+	comments            bool
 	code                string
 	depth               int
 	headSize            int
@@ -84,6 +85,11 @@ func NewGCodeBuilder() *GCodeBuilder {
 		postamble:     DefaultPostamble,
 		continousLine: false,
 	}
+}
+
+func (b *GCodeBuilder) Comments(c bool) *GCodeBuilder {
+	b.comments = c
+	return b
 }
 
 // SetDepth sets how deep the Heas should go.
@@ -173,7 +179,10 @@ func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
 
 // Comment writes comment to GCode.
 func (b *GCodeBuilder) Comment(comment string) *GCodeBuilder {
-	b.code += fmt.Sprintf("; %s\n", comment)
+	if b.comments {
+		b.code += fmt.Sprintf("; %s\n", comment)
+	}
+
 	return b
 }
 

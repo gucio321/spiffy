@@ -11,9 +11,10 @@ import (
 )
 
 type Spiffy struct {
-	scale float32
-	Defs  Defs  `xml:"defs"`
-	Graph Graph `xml:"g"`
+	scale     float32
+	noComment bool
+	Defs      Defs  `xml:"defs"`
+	Graph     Graph `xml:"g"`
 }
 
 type Defs struct {
@@ -97,6 +98,11 @@ func NewSpiffy() *Spiffy {
 
 func (s *Spiffy) Scale(scale float32) *Spiffy {
 	s.scale = scale
+	return s
+}
+
+func (s *Spiffy) NoComment() *Spiffy {
+	s.noComment = true
 	return s
 }
 
