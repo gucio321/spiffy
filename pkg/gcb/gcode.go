@@ -66,7 +66,7 @@ const (
 // uses AbsolutePos - position absolute to image you want to draw (so starting from 0,0)
 type GCodeBuilder struct {
 	comments            bool
-	code                string
+	commands            []Command
 	depth               int
 	headSize            int
 	isDrawing           bool
@@ -104,13 +104,27 @@ func (b *GCodeBuilder) SetHeadSize(size int) *GCodeBuilder {
 	return b
 }
 
+func (b *GCodeBuilder) PushCommand(c ...Command) *GCodeBuilder {
+	b.commands = append(b.commands, c...)
+	return b
+}
+
 // Up stops active drawing
 func (b *GCodeBuilder) Up() *GCodeBuilder {
 	if !b.isDrawing {
-		glg.Fatalf("Up called, but not drawing! %s", b.code)
+		glg.Fatalf("Up called, but not drawing! %s", b.commands)
 	}
 
-	b.code += fmt.Sprintf("G0 Z%d ; stop drawing\n", b.depth)
+	b.PushCommand(Command{
+		LineComment: "Stop drawing",
+		Code:        "G0",
+		Args: []Arg{
+			{
+				Name:  "Z",
+				Value: b.depth,
+			},
+		},
+	})
 
 	b.isDrawing = false
 
@@ -120,10 +134,19 @@ func (b *GCodeBuilder) Up() *GCodeBuilder {
 // Down starts drawing
 func (b *GCodeBuilder) Down() *GCodeBuilder {
 	if b.isDrawing {
-		glg.Fatalf("Down called, but already drawing! %s", b.code)
+		glg.Fatalf("Down called, but already drawing! %s", b.commands)
 	}
 
-	b.code += fmt.Sprintf("G0 Z-%d ; start drawing\n", b.depth)
+	b.PushCommand(Command{
+		LineComment: "Start drawing",
+		Code:        "G0",
+		Args: []Arg{
+			{
+				Name:  "Z",
+				Value: -b.depth,
+			},
+		},
+	})
 
 	b.isDrawing = true
 
@@ -135,7 +158,7 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 // Then, no Up()/Down() will be called automatically.
 func (b *GCodeBuilder) BeginContinousLine() *GCodeBuilder {
 	if b.continousLine {
-		glg.Fatalf("BeginContinousLine called, but already drawing continous line! %s", b.code)
+		glg.Fatalf("BeginContinousLine called, but already drawing continous line! %s", b.commands)
 	}
 
 	b.Down()
@@ -146,7 +169,7 @@ func (b *GCodeBuilder) BeginContinousLine() *GCodeBuilder {
 // EndContinousLine stops drawing a continous line.
 func (b *GCodeBuilder) EndContinousLine() *GCodeBuilder {
 	if !b.continousLine {
-		glg.Fatalf("EndContinousLine called, but not drawing continous line! %s", b.code)
+		glg.Fatalf("EndContinousLine called, but not drawing continous line! %s", b.commands)
 	}
 
 	b.Up()
@@ -158,7 +181,23 @@ func (b *GCodeBuilder) EndContinousLine() *GCodeBuilder {
 // NOTE: moveRel does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 	b.currentP = b.currentP.Add(Redefine[HardwareAbsolutePos](p))
-	b.code += fmt.Sprintf("G0 X%f Y%f ; move to x %[3]f y %[4]f\n", p.X, p.Y, b.currentP.X, b.currentP.Y)
+
+	// Push draw command
+	b.PushCommand(Command{
+		LineComment: fmt.Sprintf("Move to %v", b.currentP),
+		Code:        "G0",
+		Args: []Arg{
+			{
+				Name:  "X",
+				Value: b.currentP.X,
+			},
+			{
+				Name:  "Y",
+				Value: b.currentP.Y,
+			},
+		},
+	})
+
 	validateHwAbs(b.currentP)
 	return b
 }
@@ -180,7 +219,9 @@ func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
 // Comment writes comment to GCode.
 func (b *GCodeBuilder) Comment(comment string) *GCodeBuilder {
 	if b.comments {
-		b.code += fmt.Sprintf("; %s\n", comment)
+		b.PushCommand(Command{
+			LineComment: comment,
+		})
 	}
 
 	return b
@@ -272,7 +313,20 @@ func (b *GCodeBuilder) DrawCircle(pImg BetterPoint[AbsolutePos], r float32) *GCo
 
 	// 1.1: do circle
 	relP := b.absToRel(p)
-	b.code += fmt.Sprintf("G2 I%[1]f J%[2]f ; Draw circle with center in %[1]f and %[2]f with radius %[3]f\n", relP.X, relP.Y, r)
+	b.PushCommand(Command{
+		LineComment: fmt.Sprintf("Draw circle with center in %v Ands at %v", relP, baseP),
+		Code:        "G2",
+		Args: []Arg{
+			{
+				Name:  "I",
+				Value: relP.X,
+			},
+			{
+				Name:  "J",
+				Value: relP.Y,
+			},
+		},
+	})
 
 	if !b.continousLine {
 		b.Up()
@@ -325,11 +379,24 @@ func (b *GCodeBuilder) DrawSector(pImg BetterPoint[AbsolutePos], radius float32,
 		AbsolutePos(math.Sin(float64(end)) * float64(radius)),
 	})
 
+	hwAbsFinalP := translate(finalP)
+
 	relFinalP := b.absToRel(translate(finalP))
 	// 1.2: do circle
 	relP := b.absToRel(p)
-	b.code += fmt.Sprintf("G3 I%[1]f J%[2]f X%[3]f Y%[4]f; Draw circle with center in %[1]f and %[2]f with radius %[5]f\n", relP.X, relP.Y, relFinalP.X, relFinalP.Y, radius)
-	b.currentP = translate(finalP)
+
+	b.PushCommand(Command{
+		LineComment: fmt.Sprintf("Draw sector with center in %v Ends at %v", relP, hwAbsFinalP),
+		Code:        "G2",
+		Args: []Arg{
+			{"I", relP.X},
+			{"J", relP.Y},
+			{"X", relFinalP.X},
+			{"Y", relFinalP.Y},
+		},
+	})
+
+	b.currentP = hwAbsFinalP
 
 	if !b.continousLine {
 		b.Up()
@@ -411,7 +478,19 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	control2Rel := control2.Add(end.Mul(-1))
 	// 1.5: draw
 	endHwAbs := translate(end)
-	b.code += fmt.Sprintf("G5 I%f J%f P%f Q%f X%f Y%f ; Finish at X %f Y %f\n", control1Rel.X, control1Rel.Y, control2Rel.X, control2Rel.Y, endRel.X, endRel.Y, endHwAbs.X, endHwAbs.Y)
+	b.PushCommand(Command{
+		LineComment: fmt.Sprintf("Finish at %v", endHwAbs),
+		Code:        "G5",
+		Args: []Arg{
+			{"I", control1Rel.X},
+			{"J", control1Rel.Y},
+			{"P", control2Rel.X},
+			{"Q", control2Rel.Y},
+			{"X", endRel.X},
+			{"Y", endRel.Y},
+		},
+	})
+
 	if !b.continousLine {
 		// 1.6: stop drawing
 		b.Up()
@@ -430,7 +509,15 @@ func (b *GCodeBuilder) Current() BetterPoint[AbsolutePos] {
 
 // String returns built GCode.
 func (b *GCodeBuilder) String() string {
-	return fmt.Sprintf("%s\n%s\n%s", b.preamble, b.code, b.postamble)
+	// actual build:
+	result := b.preamble
+	for _, c := range b.commands {
+		result += c.String(b.comments) + "\n"
+	}
+
+	result += b.postamble
+
+	return result
 }
 
 func (b *GCodeBuilder) RelToAbs(p BetterPoint[RelativePos]) BetterPoint[AbsolutePos] {
