@@ -20,23 +20,16 @@ type (
 	HardwareAbsolutePos float32
 )
 
-const DefaultPreamble = `;; BEGIN PREAMBUA
-M413 S0 ; Disable power loss recovery
-M107 ; Fan off
-M104 S0 ; Set target temperature
-G92 E0 ; Hotend reset
-G90 ; Absolute positioning
-
-G28 X Y ; Home X and Y axes
-
+const DefaultPreamble = ` ; BEGIN PREAMBUA
+M413 S0            ; Disable power loss recovery
+M107               ; Fan off
+M104 S0            ; Set target temperature
+G92 E0             ; Hotend reset
+G90                ; Absolute positioning
+G28 X Y            ; Home X and Y axes
 G0 X80 Y80 F5000.0 ; Move to start position
-
-G91 ; Relative positioning
-
-; START OF PRINT
-
-M204 S2000 ; PRinting and travel speed in mm/s/s
-
+G91                ; Relative positioning
+M204 S2000         ; PRinting and travel speed in mm/s/s
 ;; END PREABUA
 
 ;; BEGIN BUA
