@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gucio321/spiffy/pkg/gcb"
+	"github.com/kpango/glg"
 )
 
 type Spiffy struct {
@@ -108,9 +109,11 @@ func (s *Spiffy) GCode() (string, error) {
 		var currentType PathType
 		for i := 0; i < len(txts); i++ {
 			t := txts[i]
+			glg.Debugf("Proessing %d/%d: %s", i, len(txts), t)
 			pathType, ok := PathTypeEnum[t]
 			if ok {
 				currentType = pathType
+				glg.Debugf("Setting current operation type to %s", currentType)
 				continue
 			}
 
@@ -128,10 +131,12 @@ func (s *Spiffy) GCode() (string, error) {
 
 			switch currentType {
 			case PathMoveToAbs:
-				p := gcb.Redefine[gcb.AbsolutePos](pSrc)
+				p := gcb.Redefine[gcb.AbsolutePos](pSrc).Mul(gcb.AbsolutePos(s.scale))
+				glg.Debugf("Moving to %v", p)
 				builder.Move(p)
 			case PathMoveToRel:
-				p := gcb.Redefine[gcb.RelativePos](pSrc)
+				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
+				glg.Debugf("Moving to %v", p)
 				builder.Move(builder.RelToAbs(p))
 			case PathCubicBezierCurveRel:
 				// read 3 args
@@ -144,9 +149,11 @@ func (s *Spiffy) GCode() (string, error) {
 				case len(cache) == 2:
 					cache = append(cache, pSrc)
 					// redefine points as Abs
-					p0 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[0])).Mul(gcb.AbsolutePos(s.scale))
-					p1 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[1])).Mul(gcb.AbsolutePos(s.scale))
-					p2 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[2])).Mul(gcb.AbsolutePos(s.scale))
+					p0 := gcb.Redefine[gcb.AbsolutePos](cache[0]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
+					p1 := gcb.Redefine[gcb.AbsolutePos](cache[1]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
+					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
+
+					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
 					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
 					// clean cache
@@ -166,6 +173,7 @@ func (s *Spiffy) GCode() (string, error) {
 					p0 := gcb.Redefine[gcb.AbsolutePos](cache[0]).Mul(gcb.AbsolutePos(s.scale))
 					p1 := gcb.Redefine[gcb.AbsolutePos](cache[1]).Mul(gcb.AbsolutePos(s.scale))
 					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale))
+					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
 					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
 					// clean cache

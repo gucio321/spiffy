@@ -4,6 +4,7 @@ package gcb
 import (
 	"fmt"
 	"math"
+	"runtime"
 
 	"github.com/kpango/glg"
 )
@@ -316,6 +317,8 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	// 1.0: move to start
 	b.Move(start)
 	// 1.1: calculate control point 1 (as relative to start)
+	fmt.Println(b.currentP)
+	fmt.Println(control1)
 	control1Rel := b.absToRel(translate(control1))
 	// 1.3: find relative end pos
 	endRel := b.absToRel(translate(end))
@@ -373,12 +376,20 @@ func validateAbs(p BetterPoint[AbsolutePos]) BetterPoint[AbsolutePos] {
 func validateHwAbs(p BetterPoint[HardwareAbsolutePos]) BetterPoint[HardwareAbsolutePos] {
 	switch {
 	case p.X < MinX:
-		glg.Fatalf("Absolute position must be larger than %f, got %f", MinX, p.X)
+		_, file, line, ok := runtime.Caller(2)
+		glg.Infof("Called at: %s %d %v\n", file, line, ok)
+		glg.Fatalf("Absolute position must be larger than %d, got %f", MinX, p.X)
 	case p.X > MaxX:
+		_, file, line, ok := runtime.Caller(2)
+		glg.Infof("Called at: %s %d %v\n", file, line, ok)
 		glg.Fatalf("Absolute position must be less than %v, got %f", MaxX, p.X)
 	case p.Y < MinY:
-		glg.Fatalf("Absolute position must be larger than %f, got %f", MinY, p.Y)
+		_, file, line, ok := runtime.Caller(2)
+		glg.Infof("Called at: %s %d %v\n", file, line, ok)
+		glg.Fatalf("Absolute position must be larger than %d, got %f", MinY, p.Y)
 	case p.Y > MaxY:
+		_, file, line, ok := runtime.Caller(2)
+		glg.Infof("Called at: %s %d %v\n", file, line, ok)
 		glg.Fatalf("Absolute position must be less than %v, got %f", MaxY, p.Y)
 	}
 
