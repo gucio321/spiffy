@@ -78,6 +78,7 @@ type GCodeBuilder struct {
 // NewGCodeBuilder creates new GCodeBuilder with default values.
 func NewGCodeBuilder() *GCodeBuilder {
 	return &GCodeBuilder{
+		comments:      true,
 		currentP:      BetterPoint[HardwareAbsolutePos]{BaseX, BaseY},
 		depth:         BaseDepth,
 		headSize:      DefaultHeadSize,
