@@ -6,7 +6,7 @@ import (
 
 func Parse(data []byte) (result *Spiffy, err error) {
 	// 0.0: initialize
-	result = &Spiffy{}
+	result = NewSpiffy()
 
 	// 1.0: unmarshal xml
 	if err := xml.Unmarshal(data, result); err != nil {

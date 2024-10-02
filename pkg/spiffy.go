@@ -89,6 +89,12 @@ type Tspan2 struct {
 	Text  string `xml:",chardata"`
 }
 
+func NewSpiffy() *Spiffy {
+	return &Spiffy{
+		scale: 1.0,
+	}
+}
+
 func (s *Spiffy) Scale(scale float32) *Spiffy {
 	s.scale = scale
 	return s
