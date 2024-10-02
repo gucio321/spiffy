@@ -121,23 +121,23 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 	return b
 }
 
-// MoveRel relative destination x, y.
-// NOTE: MoveRel does NOT call Up/Down. It just moves.
-func (b *GCodeBuilder) MoveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
-	b.currentP.Add(Redefine[HardwareAbsolutePos](p))
+// moveRel relative destination x, y.
+// NOTE: moveRel does NOT call Up/Down. It just moves.
+func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
+	b.currentP = b.currentP.Add(Redefine[HardwareAbsolutePos](p))
 	b.code += fmt.Sprintf("G0 X%f Y%f ; move to x %[3]f y %[4]f\n", p.X, p.Y, b.currentP.X, b.currentP.Y)
 	validateHwAbs(b.currentP)
 	return b
 }
 
 // Move moves to absolute position given
-// NOTE: Move calls MoveRel so does NOT call Up/Down. It just moves.
+// NOTE: Move calls moveRel so does NOT call Up/Down. It just moves.
 func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
 	b.Commentf("BEGIN Move(%v)", p)
 
 	p = validateAbs(p)
 	relP := b.absToRel(translate(p))
-	b.MoveRel(relP)
+	b.moveRel(relP)
 
 	b.Commentf("END Move(%v)", p)
 
@@ -315,9 +315,28 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 
 	// 1.0: move to start
 	b.Move(start)
+	// 1.1: calculate control point 1 (as relative to start)
+	control1Rel := b.absToRel(translate(control1))
+	// 1.3: find relative end pos
+	endRel := b.absToRel(translate(end))
+	// 1.3: calculate control point 2 (as relative to end)
+	// according to doc it should be control2-end
+	control2Rel := control2.Add(end.Mul(-1))
+	// 1.4: start drawing
+	b.Down()
+	// 1.5: draw
+	b.code += fmt.Sprintf("G5 I%f J%f P%f Q%f X%f Y%f ; Draw Bezier cubic\n", control1Rel.X, control1Rel.Y, control2Rel.X, control2Rel.Y, endRel.X, endRel.Y)
+	// 1.6: stop drawing
+	b.Up()
+	// 1.7: update current position
+	b.currentP = translate(end)
 
 	b.Commentf("END DrawBezierCubic(%v, %v, %v, %v)", start, end, control1, control2)
 	return b
+}
+
+func (b *GCodeBuilder) Current() BetterPoint[AbsolutePos] {
+	return Redefine[AbsolutePos](b.currentP.Add(BetterPt(HardwareAbsolutePos(-MinX), HardwareAbsolutePos(-MinY))))
 }
 
 // String returns built GCode.
@@ -325,7 +344,14 @@ func (b *GCodeBuilder) String() string {
 	return fmt.Sprintf("%s\n%s\n%s", b.preamble, b.code, b.postamble)
 }
 
-func (b *GCodeBuilder) RelToAbs(p BetterPoint[RelativePos]) BetterPoint[HardwareAbsolutePos] {
+func (b *GCodeBuilder) RelToAbs(p BetterPoint[RelativePos]) BetterPoint[AbsolutePos] {
+	result := Redefine[AbsolutePos](p)
+	result.X += AbsolutePos(b.currentP.X - MinX)
+	result.Y += AbsolutePos(b.currentP.Y - MinY)
+	return result
+}
+
+func (b *GCodeBuilder) relToHwAbs(p BetterPoint[RelativePos]) BetterPoint[HardwareAbsolutePos] {
 	return validateHwAbs(Redefine[HardwareAbsolutePos](p).Add(b.currentP))
 }
 

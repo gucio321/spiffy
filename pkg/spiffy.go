@@ -98,14 +98,16 @@ func (s *Spiffy) GCode() (string, error) {
 	builder := gcb.NewGCodeBuilder()
 
 	// 1.0: draw paths
-	for _, line := range s.Graph.Paths {
+	builder.Comment("Drawing PATHS from SVG")
+	for lineIdx, line := range s.Graph.Paths {
+		builder.Commentf("Drawing path %d", lineIdx)
 		txt := line.D
 		txts := strings.Split(txt, " ")
 
-		// paths := make([]gcb.BetterPoint, 0, len(txts)-1)
-
+		var cache []gcb.BetterPoint[float32]
 		var currentType PathType
-		for _, t := range txts {
+		for i := 0; i < len(txts); i++ {
+			t := txts[i]
 			pathType, ok := PathTypeEnum[t]
 			if ok {
 				currentType = pathType
@@ -119,21 +121,56 @@ func (s *Spiffy) GCode() (string, error) {
 
 			xStr, yStr := parts[0], parts[1]
 			// parse floats
-			x, err := strconv.ParseFloat(xStr, 32)
-			if err != nil {
-				return "", err
-			}
-
-			y, err := strconv.ParseFloat(yStr, 32)
+			pSrc, err := ptFromStr[float32](xStr, yStr)
 			if err != nil {
 				return "", err
 			}
 
 			switch currentType {
 			case PathMoveToAbs:
-				builder.Move(gcb.BetterPoint[gcb.AbsolutePos]{gcb.AbsolutePos(x), gcb.AbsolutePos(y)})
+				p := gcb.Redefine[gcb.AbsolutePos](pSrc)
+				builder.Move(p)
 			case PathMoveToRel:
-				builder.MoveRel(gcb.BetterPoint[gcb.RelativePos]{gcb.RelativePos(x), gcb.RelativePos(y)})
+				p := gcb.Redefine[gcb.RelativePos](pSrc)
+				builder.Move(builder.RelToAbs(p))
+			case PathCubicBezierCurveRel:
+				// read 3 args
+				switch {
+				case cache == nil:
+					cache = make([]gcb.BetterPoint[float32], 0, 3)
+					fallthrough
+				case len(cache) < 2:
+					cache = append(cache, pSrc)
+				case len(cache) == 2:
+					cache = append(cache, pSrc)
+					// redefine points as Abs
+					p0 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[0])).Mul(gcb.AbsolutePos(s.scale))
+					p1 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[1])).Mul(gcb.AbsolutePos(s.scale))
+					p2 := builder.RelToAbs(gcb.Redefine[gcb.RelativePos](cache[2])).Mul(gcb.AbsolutePos(s.scale))
+
+					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
+					// clean cache
+					cache = nil
+				}
+			case PathCubicBezierCurveAbs:
+				// read 3 args
+				switch {
+				case cache == nil:
+					cache = make([]gcb.BetterPoint[float32], 0, 3)
+					fallthrough
+				case len(cache) < 2:
+					cache = append(cache, pSrc)
+				case len(cache) == 2:
+					cache = append(cache, pSrc)
+					// redefine points as Abs
+					p0 := gcb.Redefine[gcb.AbsolutePos](cache[0]).Mul(gcb.AbsolutePos(s.scale))
+					p1 := gcb.Redefine[gcb.AbsolutePos](cache[1]).Mul(gcb.AbsolutePos(s.scale))
+					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale))
+
+					builder.DrawBezierCubic(builder.Current(), p0, p1, p2)
+					// clean cache
+					cache = nil
+				}
 			default:
 				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
@@ -197,4 +234,19 @@ func (s *Spiffy) GCode() (string, error) {
 
 	result := builder.String()
 	return result, nil
+}
+
+func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {
+	result := gcb.BetterPoint[T]{}
+	x, err := strconv.ParseFloat(xStr, 32)
+	if err != nil {
+		return result, err
+	}
+
+	y, err := strconv.ParseFloat(yStr, 32)
+	if err != nil {
+		return result, err
+	}
+
+	return gcb.BetterPt(T(x), T(y)), nil
 }

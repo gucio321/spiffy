@@ -25,11 +25,12 @@ const (
 	PathCubicBezierCurveAbs // C
 	// c - cubic bezier curve to relative pos (3 args)(controlPoint1, controlPoint2, endPoint)
 	PathCubicBezierCurveRel // c
+	END
 )
 
 var PathTypeEnum = func() map[string]PathType {
 	m := make(map[string]PathType)
-	for i := PathMoveToAbs; i <= PathLineToVerticalRel; i++ {
+	for i := PathMoveToAbs; i < END; i++ {
 		m[i.String()] = i
 	}
 	return m
