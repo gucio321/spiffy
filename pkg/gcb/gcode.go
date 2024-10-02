@@ -328,11 +328,12 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	// 1.4: start drawing
 	b.Down()
 	// 1.5: draw
-	b.code += fmt.Sprintf("G5 I%f J%f P%f Q%f X%f Y%f ; Draw Bezier cubic\n", control1Rel.X, control1Rel.Y, control2Rel.X, control2Rel.Y, endRel.X, endRel.Y)
+	endHwAbs := translate(end)
+	b.code += fmt.Sprintf("G5 I%f J%f P%f Q%f X%f Y%f ; Finish at X %f Y %f\n", control1Rel.X, control1Rel.Y, control2Rel.X, control2Rel.Y, endRel.X, endRel.Y, endHwAbs.X, endHwAbs.Y)
 	// 1.6: stop drawing
 	b.Up()
 	// 1.7: update current position
-	b.currentP = translate(end)
+	b.currentP = endHwAbs
 
 	b.Commentf("END DrawBezierCubic(%v, %v, %v, %v)", start, end, control1, control2)
 	return b
