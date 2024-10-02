@@ -30,6 +30,11 @@ func main() {
 		glg.Fatalf("Cannot parse file %s: %v", inputFilePath, err)
 	}
 
-	result.Scale(0.05)
-	fmt.Println(result.GCode())
+	result.Scale(0.1)
+	gcode, err := result.GCode()
+	if err != nil {
+		glg.Fatalf("Cannot generate GCode: %v", err)
+	}
+
+	fmt.Println(gcode)
 }
