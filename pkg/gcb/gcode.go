@@ -124,12 +124,12 @@ func (b *GCodeBuilder) Down() *GCodeBuilder {
 	return b
 }
 
-// StartContinousLine starts drawing a continous line.
+// BeginContinousLine starts drawing a continous line.
 // Every draw command's starting point should be b.Current() (and this will be checked and will panic if not true).
 // Then, no Up()/Down() will be called automatically.
-func (b *GCodeBuilder) StartContinousLine() *GCodeBuilder {
+func (b *GCodeBuilder) BeginContinousLine() *GCodeBuilder {
 	if b.continousLine {
-		glg.Fatalf("StartContinousLine called, but already drawing continous line! %s", b.code)
+		glg.Fatalf("BeginContinousLine called, but already drawing continous line! %s", b.code)
 	}
 
 	b.Down()
@@ -137,10 +137,10 @@ func (b *GCodeBuilder) StartContinousLine() *GCodeBuilder {
 	return b
 }
 
-// StopContinousLine stops drawing a continous line.
-func (b *GCodeBuilder) StopContinousLine() *GCodeBuilder {
+// EndContinousLine stops drawing a continous line.
+func (b *GCodeBuilder) EndContinousLine() *GCodeBuilder {
 	if !b.continousLine {
-		glg.Fatalf("StopContinousLine called, but not drawing continous line! %s", b.code)
+		glg.Fatalf("EndContinousLine called, but not drawing continous line! %s", b.code)
 	}
 
 	b.Up()

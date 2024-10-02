@@ -102,11 +102,12 @@ func (s *Spiffy) GCode() (string, error) {
 	builder.Comment("Drawing PATHS from SVG")
 	for lineIdx, line := range s.Graph.Paths {
 		builder.Commentf("Drawing path %d", lineIdx)
-		txt := line.D
-		txts := strings.Split(txt, " ")
+		txts := strings.Split(line.D, " ")
 
 		var cache []gcb.BetterPoint[float32]
 		var currentType PathType
+		isDrawing := false
+
 		for i := 0; i < len(txts); i++ {
 			t := txts[i]
 			glg.Debugf("Proessing %d/%d: %s", i, len(txts), t)
@@ -131,13 +132,27 @@ func (s *Spiffy) GCode() (string, error) {
 
 			switch currentType {
 			case PathMoveToAbs:
+				if isDrawing {
+					builder.EndContinousLine()
+				}
+
 				p := gcb.Redefine[gcb.AbsolutePos](pSrc).Mul(gcb.AbsolutePos(s.scale))
 				glg.Debugf("Moving to %v", p)
 				builder.Move(p)
+
+				isDrawing = true
+				builder.BeginContinousLine()
 			case PathMoveToRel:
+				if isDrawing {
+					builder.EndContinousLine()
+				}
+
 				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
 				glg.Debugf("Moving to %v", p)
 				builder.Move(builder.RelToAbs(p))
+
+				isDrawing = true
+				builder.BeginContinousLine()
 			case PathCubicBezierCurveRel:
 				// read 3 args
 				switch {
@@ -183,49 +198,9 @@ func (s *Spiffy) GCode() (string, error) {
 				return "", fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
 		}
-		/*
-				relative := false
-				var currentX, currentY float32
-				for _, t := range txts {
-					switch t {
-					case "M", "m":
-						relative = false
-						continue
-					case "C", "c":
-						relative = true
-						continue
-					}
 
-					parts := strings.Split(t, ",")
-					if len(parts) != 2 {
-						return "", errors.New("Unexpected paths.D parts; Not implemented")
-					}
+		builder.EndContinousLine()
 
-					xStr, yStr := parts[0], parts[1]
-					// parse floats
-					x, err := strconv.ParseFloat(xStr, 32)
-					if err != nil {
-						return "", err
-					}
-
-					y, err := strconv.ParseFloat(yStr, 32)
-					if err != nil {
-						return "", err
-					}
-
-					if relative {
-						currentX += (float32(x) * float32(s.scale))
-						currentY += (float32(y) * float32(s.scale))
-					} else {
-						currentX = (float32(x) * float32(s.scale))
-						currentY = (float32(y) * float32(s.scale))
-					}
-
-					paths = append(paths, gcb.BetterPoint{X: currentX, Y: currentX}) // TODO: loses precision; use custom thing instead of image.Point
-				}
-
-			builder.DrawPath(true, paths...)
-		*/
 		builder.Separator()
 	}
 
