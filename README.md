@@ -22,3 +22,4 @@ onto a material using a CNC machine.
 ## Reference
 - GCode: https://marlinfw.org/docs/gcode/G005.html
 - SVG: https://developer.mozilla.org/en-US/docs/Web/SVG
+- testing tool: https://nraynaud.github.io/webgcode/
