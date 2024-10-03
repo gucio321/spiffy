@@ -3,6 +3,8 @@ package gcb
 import (
 	"fmt"
 	"math"
+
+	"github.com/kpango/glg"
 )
 
 // moveRel relative destination x, y.
@@ -26,7 +28,7 @@ func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 
 // Move moves to absolute position given
 // NOTE: Move calls moveRel so does NOT call Up/Down. It just moves.
-func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
+func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) error {
 	b.Commentf("BEGIN Move(%v)", p)
 
 	p = validateAbs(p)
@@ -35,7 +37,7 @@ func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) *GCodeBuilder {
 
 	b.Commentf("END Move(%v)", p)
 
-	return b
+	return nil
 }
 
 // Comment writes comment to GCode.
@@ -246,6 +248,7 @@ func (b *GCodeBuilder) DrawRectFilled(p0, p1 BetterPoint[AbsolutePos]) *GCodeBui
 * - X and Y: end point
  */
 func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoint[AbsolutePos]) error {
+	glg.Fatal("DrawBezierCubic will not work on 3D printers. Use DrawBezier. https://github.com/gucio321/spiffy/issues/1. If you know you really want to use this... you have a problem hehe.")
 	b.Commentf("BEGIN DrawBezierCubic(%v, %v, %v, %v)", start, end, control1, control2)
 
 	// 1.0: move to start and start drawing
@@ -284,5 +287,27 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	b.currentP = endHwAbs
 
 	b.Commentf("END DrawBezierCubic(%v, %v, %v, %v)", start, end, control1, control2)
+	return nil
+}
+
+// DrawBezier draws a bezier but does it better than DrawBezierCubic.
+// Generally refer to https://github.com/gucio321/spiffy/issues/1 for reasons why you dont' want to use the previous fn.
+// This one will use `G0` GCode commands (or if you preffer: (*GCodeBuilder).Move()) to draw a bezier-like line.
+// steps is an "accuracy" measure. It describes how many points will be calculated.
+func (b *GCodeBuilder) DrawBezier(steps uint, points ...BetterPoint[AbsolutePos]) error {
+	if err := b.startDrawing(points[0]); err != nil {
+		return fmt.Errorf("cant start drawing line: %w", err)
+	}
+
+	for t := float32(0); t <= 1; t += 1 / float32(steps) {
+		if err := b.Move(bezier(t, points)); err != nil {
+			return fmt.Errorf("cant start drawing bezier: %w", err)
+		}
+	}
+
+	if err := b.stopDrawing(); err != nil {
+		return fmt.Errorf("cant stop drawing bezier: %w", err)
+	}
+
 	return nil
 }
