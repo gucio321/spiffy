@@ -170,6 +170,18 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 				isDrawing = true
 				builder.BeginContinousLine()
 				cache = nil
+			case PathLineToRel:
+				if err != nil {
+					continue
+				}
+
+				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
+				glg.Debugf("Drawing line to %v", p)
+				builder.DrawLine(builder.Current(), builder.RelToAbs(p))
+
+				isDrawing = true
+				builder.BeginContinousLine()
+				cache = nil
 			case PathCubicBezierCurveRel:
 				// read 3 args
 				switch {
