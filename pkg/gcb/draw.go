@@ -15,8 +15,8 @@ func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 		LineComment: fmt.Sprintf("Move to %v", b.currentP),
 		Code:        "G0",
 		Args: []Arg{
-			{"X", b.currentP.X},
-			{"Y", b.currentP.Y},
+			{"X", p.X},
+			{"Y", p.Y},
 		},
 	})
 
@@ -153,7 +153,6 @@ func (b *GCodeBuilder) DrawCircleFilled(p BetterPoint[AbsolutePos], radius float
 // DrawSector draws a sector (part of circle) on absolute (x,y) with radius r.
 // start is a RADIAL angle where to start, end is a RADIAL angle where to end.
 // NOTE: start/end 0 point is positive X axis. Angle is counterclockwise.
-// TODO: this is not tested yet. test on e.g. .DrawSector(10,10,10,0,math.Pi/2)
 func (b *GCodeBuilder) DrawSector(pImg BetterPoint[AbsolutePos], radius float32, start, end float32) error {
 	b.Commentf("BEGIN DrawSector(%v, %f, %f, %f)", pImg, radius, start, end)
 
@@ -210,9 +209,9 @@ func (b *GCodeBuilder) DrawRect(p0, p1 BetterPoint[AbsolutePos]) error {
 		return fmt.Errorf("cant start drawing rect: %w", err)
 	}
 
+	b.Move(p0.Add(BetterPt(p1.X, 0)))
 	b.Move(p1)
-	b.Move(p1)
-	b.Move(p0)
+	b.Move(p0.Add(BetterPt(0, p1.Y)))
 	b.Move(p0)
 
 	if err := b.stopDrawing(); err != nil {
