@@ -119,6 +119,7 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 		var cache []gcb.BetterPoint[float32]
 		var currentType PathType
 		isDrawing := false
+		start := gcb.BetterPoint[gcb.AbsolutePos]{0, 0}
 
 		for i := 0; i < len(txts); i++ {
 			t := txts[i]
@@ -138,11 +139,13 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 				}
 
 				cache = append(cache, pSrc)
+				p := gcb.Redefine[gcb.AbsolutePos](pSrc).Mul(gcb.AbsolutePos(s.scale))
 				if isDrawing {
 					builder.EndContinousLine()
+				} else {
+					start = p
 				}
 
-				p := gcb.Redefine[gcb.AbsolutePos](pSrc).Mul(gcb.AbsolutePos(s.scale))
 				glg.Debugf("Moving to %v", p)
 				builder.Move(p)
 
@@ -154,11 +157,13 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 					continue
 				}
 
+				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
 				if isDrawing {
 					builder.EndContinousLine()
+				} else {
+					start = builder.RelToAbs(p)
 				}
 
-				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
 				glg.Debugf("Moving to %v", p)
 				builder.Move(builder.RelToAbs(p))
 
@@ -184,7 +189,7 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 
 					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
-					if err := builder.DrawBezierCubic(builder.Current(), p0, p1, p2); err != nil {
+					if err := builder.DrawBezier(20, builder.Current(), p0, p1, p2); err != nil {
 						return builder, err
 					}
 
@@ -209,7 +214,7 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale))
 					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
-					if err := builder.DrawBezierCubic(builder.Current(), p0, p1, p2); err != nil {
+					if err := builder.DrawBezier(20, builder.Current(), p0, p1, p2); err != nil {
 						return builder, err
 					}
 					// clean cache
@@ -217,12 +222,7 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 				}
 			case PathCloseAbs, PathCloseRel:
 				// 1st is 1st command, 2nd is what we want:
-				p1, err := parseStr[gcb.AbsolutePos](txts[1])
-				if err != nil {
-					return builder, err
-				}
-
-				builder.DrawLine(builder.Current(), p1)
+				builder.DrawLine(builder.Current(), start)
 			default:
 				return builder, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
 			}
