@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"image"
 
+	"github.com/AllenDang/cimgui-go/backend"
+	ebitenbackend "github.com/AllenDang/cimgui-go/backend/ebiten-backend"
+	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -25,15 +28,25 @@ var (
 
 // Viewer creates in NewViewer an image from gcb.GCodeBuilder and static displays it in ebiten.
 type Viewer struct {
-	scale   float64
-	gcode   *gcb.GCodeBuilder
-	current *ebiten.Image
+	scale        float64
+	gcode        *gcb.GCodeBuilder
+	current      *ebiten.Image
+	imgui        *ebitenbackend.EbitenBackend
+	showMoves    bool
+	showPrinting bool
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
+	ebitenBackend := ebitenbackend.NewEbitenBackend()
+	backend.CreateBackend(ebitenBackend)
+	ebitenBackend.CreateWindow("GCode Viewer", 800, 600)
+
 	result := &Viewer{
-		scale: 1,
-		gcode: g,
+		scale:        1,
+		gcode:        g,
+		imgui:        ebitenBackend,
+		showMoves:    true,
+		showPrinting: true,
 	}
 
 	result.current = result.render()
@@ -80,7 +93,9 @@ func (g *Viewer) render() *ebiten.Image {
 					c = travelColor
 				}
 
-				ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
+				if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
+					ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
+				}
 
 				currentX, currentY = newX, newY
 			}
@@ -96,6 +111,34 @@ func (v *Viewer) Update() error {
 	if v.scale < 1 {
 		v.scale = 1
 	}
+
+	// render cimgui
+	v.imgui.BeginFrame()
+	imgui.SetNextWindowSizeV(imgui.Vec2{250, 110}, imgui.CondAlways)
+	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
+	imgui.BeginV("Settings", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoTitleBar) //|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoNav|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs)
+
+	imgui.Text(fmt.Sprintf(`use scrool to zoom in/out
+Scale: %.2f
+`, v.scale))
+	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{0, 1, 0, 1})
+
+	if imgui.Checkbox("Show Moves (without drawing)", &v.showMoves) {
+		v.current = v.render()
+	}
+
+	imgui.PopStyleColor()
+
+	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 0, 0, 1})
+
+	if imgui.Checkbox("Show Drawing", &v.showPrinting) {
+		v.current = v.render()
+	}
+
+	imgui.PopStyleColor()
+
+	imgui.End()
+	v.imgui.EndFrame()
 
 	return nil
 }
@@ -129,15 +172,11 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 			GeoM: geom,
 		})
 
-	ebitenutil.DebugPrint(screen, fmt.Sprintf(`GCode preview
-green - plain move
-red - drawing
-use scrool to zoom in/out
-Scale: %.2f
-`, v.scale))
+	v.imgui.Draw(screen)
 }
 
 func (v *Viewer) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	// return v.dest.Bounds().Dx(), v.dest.Bounds().Dy()
+	v.imgui.Layout(outsideWidth, outsideHeight)
 	return outsideWidth, outsideHeight
 }
