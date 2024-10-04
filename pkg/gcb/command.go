@@ -2,19 +2,28 @@ package gcb
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
 type Command struct {
 	Code        string
-	Args        []Arg
+	Args        Args
 	LineComment string
 }
 
 func (c *Command) String(line, above bool) string {
 	result := c.Code
-	for _, arg := range c.Args {
-		result += fmt.Sprintf(" %v%f", arg.Name, arg.Value)
+	names := make([]string, 0, len(c.Args))
+	for name := range c.Args {
+		names = append(names, name)
+	}
+
+	// sort names
+	sort.Strings(names)
+
+	for _, name := range names {
+		result += fmt.Sprintf(" %v%f", name, c.Args[name])
 	}
 
 	if c.LineComment != "" {
@@ -37,7 +46,4 @@ func (c *Command) String(line, above bool) string {
 	return result
 }
 
-type Arg struct {
-	Name  string
-	Value RelativePos
-}
+type Args map[string]RelativePos

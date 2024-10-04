@@ -107,6 +107,10 @@ func (b *GCodeBuilder) PushCommand(c ...Command) *GCodeBuilder {
 	return b
 }
 
+func (b *GCodeBuilder) Commands() []Command {
+	return b.commands
+}
+
 // Up stops active drawing
 func (b *GCodeBuilder) Up() error {
 	if !b.isDrawing {
@@ -116,11 +120,8 @@ func (b *GCodeBuilder) Up() error {
 	b.PushCommand(Command{
 		LineComment: "Stop drawing",
 		Code:        "G0",
-		Args: []Arg{
-			{
-				Name:  "Z",
-				Value: RelativePos(b.depth),
-			},
+		Args: Args{
+			"Z": RelativePos(b.depth),
 		},
 	})
 
@@ -148,11 +149,8 @@ func (b *GCodeBuilder) Down() error {
 	b.PushCommand(Command{
 		LineComment: "Start drawing",
 		Code:        "G0",
-		Args: []Arg{
-			{
-				Name:  "Z",
-				Value: RelativePos(-b.depth),
-			},
+		Args: Args{
+			"Z": RelativePos(-b.depth),
 		},
 	})
 
