@@ -20,3 +20,12 @@ func BetterPt[T ~float32](x, y T) BetterPoint[T] {
 func Redefine[T2, T1 ~float32](a BetterPoint[T1]) BetterPoint[T2] {
 	return BetterPoint[T2]{T2(a.X), T2(a.Y)}
 }
+
+func RedefineSlice[T2, T1 ~float32](a []BetterPoint[T1]) []BetterPoint[T2] {
+	result := make([]BetterPoint[T2], len(a))
+	for i, p := range a {
+		result[i] = Redefine[T2, T1](p)
+	}
+
+	return result
+}

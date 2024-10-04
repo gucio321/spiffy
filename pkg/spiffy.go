@@ -108,6 +108,8 @@ func (s *Spiffy) NoComment() *Spiffy {
 
 // GCode returns single-purpose GCode for our project.
 func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
+	var err error
+
 	builder := gcb.NewGCodeBuilder()
 
 	// 1.0: draw paths
@@ -115,123 +117,71 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 	for lineIdx, line := range s.Graph.Paths {
 		builder.Commentf("Drawing path %d", lineIdx)
 		txts := strings.Split(line.D, " ")
-
-		var cache []gcb.BetterPoint[float32]
 		var currentType PathType
-		isDrawing := false
 		start := gcb.BetterPoint[gcb.AbsolutePos]{0, 0}
 
-		for i := 0; i < len(txts); i++ {
+		builder.BeginContinousLine()
+		for i := 0; i < len(txts); {
 			t := txts[i]
 			glg.Debugf("Proessing %d/%d: %s", i, len(txts), t)
 			pathType, ok := PathTypeEnum[t]
 			if ok {
 				currentType = pathType
 				glg.Debugf("Setting current operation type to %s", currentType)
+				i++
 			}
 
-			// parse floats
-			pSrc, err := parseStr[float32](t)
+			var points []gcb.BetterPoint[gcb.AbsolutePos]
 			switch currentType {
-			case PathMoveToAbs:
+			case PathMoveToRel, PathMoveToAbs:
+				builder.EndContinousLine()
+				points, err = s.readNPts(txts, &i, 1)
 				if err != nil {
-					continue
+					return builder, err
 				}
 
-				cache = append(cache, pSrc)
-				p := gcb.Redefine[gcb.AbsolutePos](pSrc).Mul(gcb.AbsolutePos(s.scale))
-				if isDrawing {
-					builder.EndContinousLine()
-				} else {
-					start = p
-				}
-
-				glg.Debugf("Moving to %v", p)
-				builder.Move(p)
-
-				isDrawing = true
-				builder.BeginContinousLine()
-				cache = nil
-			case PathMoveToRel:
-				if err != nil {
-					continue
-				}
-
-				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
-				if isDrawing {
-					builder.EndContinousLine()
-				} else {
-					start = builder.RelToAbs(p)
-				}
-
-				glg.Debugf("Moving to %v", p)
-				builder.Move(builder.RelToAbs(p))
-
-				isDrawing = true
-				builder.BeginContinousLine()
-				cache = nil
-			case PathLineToRel:
-				if err != nil {
-					continue
-				}
-
-				p := gcb.Redefine[gcb.RelativePos](pSrc).Mul(gcb.RelativePos(s.scale))
-				glg.Debugf("Drawing line to %v", p)
-				builder.DrawLine(builder.Current(), builder.RelToAbs(p))
-
-				isDrawing = true
-				builder.BeginContinousLine()
-				cache = nil
-			case PathCubicBezierCurveRel:
-				// read 3 args
-				switch {
-				case err != nil:
-					continue
-				case cache == nil:
-					cache = make([]gcb.BetterPoint[float32], 0, 3)
-					fallthrough
-				case len(cache) < 2:
-					cache = append(cache, pSrc)
-				case len(cache) == 2:
-					cache = append(cache, pSrc)
-					// redefine points as Abs
-					p0 := gcb.Redefine[gcb.AbsolutePos](cache[0]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
-					p1 := gcb.Redefine[gcb.AbsolutePos](cache[1]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
-					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale)).Add(builder.Current())
-
-					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
-
-					if err := builder.DrawBezier(20, builder.Current(), p0, p1, p2); err != nil {
-						return builder, err
+				if currentType == PathMoveToRel {
+					for i, pt := range points {
+						points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
 					}
-
-					// clean cache
-					cache = nil
 				}
-			case PathCubicBezierCurveAbs:
-				// read 3 args
-				switch {
-				case err != nil:
-					continue
-				case cache == nil:
-					cache = make([]gcb.BetterPoint[float32], 0, 3)
-					fallthrough
-				case len(cache) < 2:
-					cache = append(cache, pSrc)
-				case len(cache) == 2:
-					cache = append(cache, pSrc)
-					// redefine points as Abs
-					p0 := gcb.Redefine[gcb.AbsolutePos](cache[0]).Mul(gcb.AbsolutePos(s.scale))
-					p1 := gcb.Redefine[gcb.AbsolutePos](cache[1]).Mul(gcb.AbsolutePos(s.scale))
-					p2 := gcb.Redefine[gcb.AbsolutePos](cache[2]).Mul(gcb.AbsolutePos(s.scale))
-					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", p0, p1, p2)
 
-					if err := builder.DrawBezier(20, builder.Current(), p0, p1, p2); err != nil {
-						return builder, err
+				glg.Debugf("Moving to %v", points[0])
+				start = points[0]
+				builder.Move(points[0])
+				builder.BeginContinousLine()
+			case PathLineToAbs, PathLineToRel:
+				points, err = s.readNPts(txts, &i, 1)
+				if err != nil {
+					return builder, err
+				}
+
+				if currentType == PathLineToRel {
+					for i, pt := range points {
+						points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
 					}
-					// clean cache
-					cache = nil
 				}
+
+				glg.Debugf("Drawing line to %v", points[0])
+				builder.DrawLine(builder.Current(), points[0])
+			case PathCubicBezierCurveRel, PathCubicBezierCurveAbs:
+				points, err = s.readNPts(txts, &i, 3)
+				if err != nil {
+					return builder, err
+				}
+
+				if currentType == PathCubicBezierCurveRel {
+					for i, pt := range points {
+						points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
+					}
+				}
+
+				glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", points[0], points[1], points[2])
+
+				if err := builder.DrawBezier(20, builder.Current(), points[0], points[1], points[2]); err != nil {
+					return builder, err
+				}
+
 			case PathCloseAbs, PathCloseRel:
 				// 1st is 1st command, 2nd is what we want:
 				builder.DrawLine(builder.Current(), start)
@@ -283,4 +233,22 @@ func parseStr[T ~float32](t string) (gcb.BetterPoint[T], error) {
 	xStr, yStr := parts[0], parts[1]
 
 	return ptFromStr[T](xStr, yStr)
+}
+
+func (s *Spiffy) readNPts(txts []string, i *int, n int) ([]gcb.BetterPoint[gcb.AbsolutePos], error) {
+	cache := make([]gcb.BetterPoint[gcb.AbsolutePos], 0, n)
+	for j := *i; j < *i+n; j++ {
+		glg.Debugf("Reading %d/%d: %s", j, n, txts[j])
+
+		pSrc, err := parseStr[gcb.AbsolutePos](txts[j])
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing %s (%d/%d): %w", txts[j], j-*i, n, err)
+		}
+
+		cache = append(cache, pSrc.Mul(gcb.AbsolutePos(s.scale)))
+	}
+
+	*i += n
+
+	return cache, nil
 }
