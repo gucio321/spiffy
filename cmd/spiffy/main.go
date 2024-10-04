@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/kpango/glg"
 
 	pkg "github.com/gucio321/spiffy/pkg"
+	"github.com/gucio321/spiffy/pkg/viewer"
 )
 
 type flags struct {
@@ -16,6 +18,7 @@ type flags struct {
 	scale          float64
 	commentsAbove  bool
 	noLineComments bool
+	view           bool
 }
 
 func main() {
@@ -25,6 +28,7 @@ func main() {
 	flag.Float64Var(&f.scale, "s", 1.0, "scale factor")
 	flag.BoolVar(&f.noLineComments, "nlc", false, "no line comments")
 	flag.BoolVar(&f.commentsAbove, "ca", false, "comments above")
+	flag.BoolVar(&f.view, "v", false, "view")
 	flag.Parse()
 
 	if _, err := os.Stat(f.inputFilePath); os.IsNotExist(err) {
@@ -56,6 +60,13 @@ func main() {
 	if f.outputFilePath != "" {
 		if err := os.WriteFile(f.outputFilePath, []byte(gcode.String()), 0644); err != nil {
 			glg.Fatalf("Cannot write file %s: %v", f.outputFilePath, err)
+		}
+	}
+
+	if f.view {
+		ebiten.SetWindowSize(800, 600)
+		if err := ebiten.RunGame(viewer.NewViewer(gcode)); err != nil {
+			glg.Fatalf("Cannot run viewer: %v", err)
 		}
 	}
 }
