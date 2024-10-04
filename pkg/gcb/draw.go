@@ -262,7 +262,7 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	endRel := b.absToRel(translate(end))
 	// 1.4: calculate control point 2 (as relative to end)
 	// according to doc it should be control2-end
-	control2Rel := control2.Add(end.Mul(-1))
+	control2Rel := Redefine[RelativePos](control2.Add(end.Mul(-1)))
 	// 1.5: draw
 	endHwAbs := translate(end)
 	b.PushCommand(Command{

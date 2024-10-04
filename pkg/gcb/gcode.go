@@ -119,7 +119,7 @@ func (b *GCodeBuilder) Up() error {
 		Args: []Arg{
 			{
 				Name:  "Z",
-				Value: b.depth,
+				Value: RelativePos(b.depth),
 			},
 		},
 	})
@@ -151,7 +151,7 @@ func (b *GCodeBuilder) Down() error {
 		Args: []Arg{
 			{
 				Name:  "Z",
-				Value: -b.depth,
+				Value: RelativePos(-b.depth),
 			},
 		},
 	})

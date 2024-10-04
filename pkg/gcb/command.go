@@ -14,7 +14,7 @@ type Command struct {
 func (c *Command) String(line, above bool) string {
 	result := c.Code
 	for _, arg := range c.Args {
-		result += fmt.Sprintf(" %v%v", arg.Name, arg.Value)
+		result += fmt.Sprintf(" %v%f", arg.Name, arg.Value)
 	}
 
 	if c.LineComment != "" {
@@ -39,5 +39,5 @@ func (c *Command) String(line, above bool) string {
 
 type Arg struct {
 	Name  string
-	Value any
+	Value RelativePos
 }
