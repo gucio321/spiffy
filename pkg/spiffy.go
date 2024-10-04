@@ -183,7 +183,7 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 				}
 
 			case PathCloseAbs, PathCloseRel:
-				// 1st is 1st command, 2nd is what we want:
+				glg.Debugf("Close path to %v", start)
 				builder.DrawLine(builder.Current(), start)
 			default:
 				return builder, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
@@ -193,6 +193,8 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 		builder.EndContinousLine()
 
 		builder.Separator()
+		glg.Debugf("Path %d done. Resetting to 0,0.", lineIdx)
+		builder.Move(gcb.BetterPt[gcb.AbsolutePos](0, 0))
 	}
 
 	// 2.0: draw circles
@@ -238,7 +240,7 @@ func parseStr[T ~float32](t string) (gcb.BetterPoint[T], error) {
 func (s *Spiffy) readNPts(txts []string, i *int, n int) ([]gcb.BetterPoint[gcb.AbsolutePos], error) {
 	cache := make([]gcb.BetterPoint[gcb.AbsolutePos], 0, n)
 	for j := *i; j < *i+n; j++ {
-		glg.Debugf("Reading %d/%d: %s", j, n, txts[j])
+		glg.Debugf("Reading %d/%d: %s", j-*i+1, n, txts[j])
 
 		pSrc, err := parseStr[gcb.AbsolutePos](txts[j])
 		if err != nil {
