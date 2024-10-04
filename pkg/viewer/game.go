@@ -10,7 +10,7 @@ import (
 var _ ebiten.Game = &Viewer{}
 
 const (
-	scale  = 10.0
+	scale  = 7.0
 	startY = 600 / scale
 )
 
@@ -26,7 +26,7 @@ type Viewer struct {
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
-	dest := ebiten.NewImage((gcb.MaxX+gcb.MinX)*scale, (gcb.MaxY+gcb.MinY)*scale)
+	dest := ebiten.NewImage((gcb.MaxX+gcb.MinX)*scale, startY*scale)
 	dest.Fill(colornames.Black)
 	isDrawing := false
 
@@ -37,6 +37,17 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		ebitenutil.DrawLine(dest, gcb.MaxX*scale, gcb.MinY*scale, gcb.MinX*scale, gcb.MinY*scale, borderColor)
 		currentX, currentY := float64(gcb.MinX), float64(gcb.MaxY)
 	*/
+	//ebitenutil.DrawLine(dest, (gcb.MaxX-gcb.MinX)*scale, (gcb.MaxY-gcb.MinY)*scale, gcb.MinX*scale, gcb.MaxY*scale, borderColor)
+	ebitenutil.DrawLine(dest,
+		(gcb.MaxX-gcb.MinX)*scale, startY*scale,
+		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
+		borderColor)
+
+	ebitenutil.DrawLine(dest,
+		0*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
+		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
+		borderColor)
+
 	currentX, currentY := 0.0, float64(startY)
 
 	for _, cmd := range g.Commands() {
