@@ -1,6 +1,7 @@
 package viewer
 
 import (
+	"fmt"
 	"image"
 
 	"github.com/gucio321/spiffy/pkg/gcb"
@@ -100,6 +101,8 @@ func (v *Viewer) Update() error {
 }
 
 func (v *Viewer) Draw(screen *ebiten.Image) {
+	screen.Fill(colornames.Blue)
+
 	const w, h = 800, 600
 	mouseX, mouseY := ebiten.CursorPosition()
 	// negative check lol
@@ -125,6 +128,13 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 		&ebiten.DrawImageOptions{
 			GeoM: geom,
 		})
+
+	ebitenutil.DebugPrint(screen, fmt.Sprintf(`GCode preview
+green - plain move
+red - drawing
+use scrool to zoom in/out
+Scale: %.2f
+`, v.scale))
 }
 
 func (v *Viewer) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
