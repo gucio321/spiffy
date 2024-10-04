@@ -23,3 +23,10 @@ onto a material using a CNC machine.
 - GCode: https://marlinfw.org/docs/gcode/G005.html
 - SVG: https://developer.mozilla.org/en-US/docs/Web/SVG
 - testing tool: https://nraynaud.github.io/webgcode/
+
+
+# Legal notes.
+
+`cmd/spiffy/AGH.svg` is a trademark/registered trademark of [AGH University of Science and Technology](https://www.agh.edu.pl). It is used here for educational purposes only.
+
+The project is licensed under the (attached) [MIT License](LICENSE).
