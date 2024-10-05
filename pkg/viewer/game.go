@@ -3,6 +3,7 @@ package viewer
 import (
 	"fmt"
 	"image"
+	"time"
 
 	"github.com/AllenDang/cimgui-go/backend"
 	ebitenbackend "github.com/AllenDang/cimgui-go/backend/ebiten-backend"
@@ -31,11 +32,18 @@ var (
 type Viewer struct {
 	scale           float64
 	gcode           *gcb.GCodeBuilder
+	code            string
 	current         *ebiten.Image
 	imgui           *ebitenbackend.EbitenBackend
 	showMoves       bool
 	showPrinting    bool
 	showStateChange bool
+	showAdvanced    bool
+	cmdRange        [2]int32
+	playTickMs      int32
+	isPlaying       bool
+	currentFrame    int
+	t               time.Time
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -50,6 +58,8 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		showMoves:       true,
 		showPrinting:    true,
 		showStateChange: true,
+		cmdRange:        [2]int32{0, int32(len(g.Commands()))},
+		playTickMs:      100,
 	}
 
 	result.current = result.render()
@@ -57,6 +67,13 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 }
 
 func (g *Viewer) render() *ebiten.Image {
+	g.code = ""
+
+	endFrame := g.cmdRange[1]
+	if g.isPlaying {
+		endFrame = int32(g.currentFrame)
+	}
+
 	scale := g.scale * baseScale
 	dest := ebiten.NewImage(int((gcb.MaxX+gcb.MinX)*scale), int(startY*scale))
 	dest.Fill(colornames.Black)
@@ -82,9 +99,10 @@ func (g *Viewer) render() *ebiten.Image {
 
 	currentX, currentY := 0.0, float64(startY)
 
-	for _, cmd := range g.gcode.Commands() {
+	for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
 		switch cmd.Code {
 		case "G0":
+			g.code += cmd.String(true, true) + "\n"
 			if _, ok := cmd.Args["Z"]; ok { // we assume this is up/down command for now
 				if g.showStateChange {
 					ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
@@ -122,7 +140,7 @@ func (v *Viewer) Update() error {
 
 	// render cimgui
 	v.imgui.BeginFrame()
-	imgui.SetNextWindowSizeV(imgui.Vec2{250, 110}, imgui.CondAlways)
+	imgui.SetNextWindowSizeV(imgui.Vec2{250, 135}, imgui.CondAlways)
 	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
 	imgui.BeginV("Settings", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoTitleBar) //|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoNav|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs)
 
@@ -153,8 +171,119 @@ Scale: %.2f
 
 	imgui.PopStyleColor()
 
+	imgui.Checkbox("Advanced", &v.showAdvanced)
+
 	imgui.End()
+
+	if v.showAdvanced {
+		imgui.Begin("Advanced GCode")
+		imgui.BeginDisabledV(v.isPlaying)
+		imgui.Text("Command Range:")
+
+		imgui.PushItemWidth(80)
+		if imgui.SliderInt("##start", &v.cmdRange[0], 0, v.cmdRange[1]) {
+			v.current = v.render()
+		}
+
+		imgui.SameLine()
+
+		if imgui.InputInt("##startText", &v.cmdRange[0]) {
+			if v.cmdRange[0] < 0 {
+				v.cmdRange[0] = 0
+			}
+
+			if v.cmdRange[0] > v.cmdRange[1] {
+				v.cmdRange[0] = v.cmdRange[1]
+			}
+
+			v.current = v.render()
+		}
+
+		imgui.PopItemWidth()
+
+		imgui.PushItemWidth(80)
+		if imgui.SliderInt("##end", &v.cmdRange[1], v.cmdRange[0], int32(len(v.gcode.Commands())-1)) {
+			v.current = v.render()
+		}
+
+		imgui.SameLine()
+
+		if imgui.InputInt("##endText", &v.cmdRange[1]) {
+			if v.cmdRange[1] > int32(len(v.gcode.Commands())-1) {
+				v.cmdRange[1] = int32(len(v.gcode.Commands()) - 1)
+			}
+
+			if v.cmdRange[1] < v.cmdRange[0] {
+				v.cmdRange[1] = v.cmdRange[0]
+			}
+
+			v.current = v.render()
+		}
+
+		imgui.PopItemWidth()
+
+		imgui.Text("Player:")
+		imgui.SameLine()
+		imgui.PushItemWidth(80)
+		if imgui.InputInt("##player", &v.playTickMs) {
+			if v.playTickMs < 1 {
+				v.playTickMs = 1
+			}
+		}
+
+		imgui.PopItemWidth()
+
+		imgui.SameLine()
+		imgui.Text("ms")
+		imgui.EndDisabled()
+		imgui.SameLine()
+		if v.isPlaying {
+			imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 0, 0, 1})
+			if imgui.Button("Stop") {
+				v.isPlaying = false
+				v.current = v.render() // rerender to the default view
+			}
+
+			imgui.PopStyleColor()
+		} else {
+			imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{0, 1, 0, 1})
+			if imgui.Button("Start") {
+				v.isPlaying = true
+				v.t = time.Now()
+				v.currentFrame = int(v.cmdRange[0])
+			}
+
+			imgui.PopStyleColor()
+		}
+
+		if imgui.TreeNodeExStr("Source Code (GCode)") {
+			if imgui.BeginChildStrV("code", imgui.Vec2{-1, 300}, 0, imgui.WindowFlagsHorizontalScrollbar) {
+				imgui.Text(v.code)
+				imgui.EndChild()
+			}
+
+			imgui.TreePop()
+		}
+
+		imgui.End()
+	}
+
 	v.imgui.EndFrame()
+
+	// now handle player
+	if v.isPlaying {
+		// first check if should not stop
+		if v.currentFrame >= int(v.cmdRange[1]) {
+			v.isPlaying = false
+		}
+
+		delta := time.Since(v.t)
+		if delta >= time.Duration(time.Duration(v.playTickMs)*time.Millisecond) {
+			v.t = time.Now()
+			v.currentFrame++
+			v.current = v.render()
+		}
+	}
 
 	return nil
 }
