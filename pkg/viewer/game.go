@@ -48,6 +48,7 @@ type Viewer struct {
 	t                time.Time
 	locked           bool
 	lockedX, lockedY float64
+	isMouseOverUI    bool
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -140,7 +141,11 @@ func (g *Viewer) render() *ebiten.Image {
 }
 
 func (v *Viewer) Update() error {
-	_, wheelY := ebiten.Wheel()
+	var wheelY float64
+	if !v.isMouseOverUI {
+		_, wheelY = ebiten.Wheel()
+	}
+
 	v.scale += wheelY * 0.1
 	if v.scale < 1 {
 		v.scale = 1
@@ -183,8 +188,10 @@ Scale: %.2f
 
 	imgui.End()
 
+	v.isMouseOverUI = false
 	if v.showAdvanced {
 		imgui.Begin("Advanced GCode")
+		v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
 		imgui.BeginDisabledV(v.isPlaying)
 		imgui.Text("Command Range:")
 
@@ -266,6 +273,7 @@ Scale: %.2f
 
 		if imgui.TreeNodeExStr("Source Code (GCode)") {
 			if imgui.BeginChildStrV("code", imgui.Vec2{-1, 300}, 0, imgui.WindowFlagsHorizontalScrollbar) {
+				v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
 				imgui.Text(v.code)
 				imgui.EndChild()
 			}
