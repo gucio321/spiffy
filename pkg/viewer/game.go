@@ -244,6 +244,9 @@ Scale: %.2f
 			if imgui.BeginChildStrV("code", imgui.Vec2{-1, 300}, 0, imgui.WindowFlagsHorizontalScrollbar) {
 				v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
 				imgui.Text(v.code)
+				if v.isPlaying {
+					imgui.SetScrollYFloat(imgui.ScrollMaxY())
+				}
 				imgui.EndChild()
 			}
 
