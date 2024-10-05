@@ -11,6 +11,7 @@ import (
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/kpango/glg"
 	"golang.org/x/image/colornames"
 )
 
@@ -125,6 +126,10 @@ func (g *Viewer) render() *ebiten.Image {
 
 				currentX, currentY = newX, newY
 			}
+		case "":
+			// noop
+		default:
+			glg.Warnf("Unknown command: %s", cmd.Code)
 		}
 	}
 
