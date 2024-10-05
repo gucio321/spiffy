@@ -11,6 +11,7 @@ import (
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/kpango/glg"
 	"golang.org/x/image/colornames"
 )
@@ -31,20 +32,22 @@ var (
 
 // Viewer creates in NewViewer an image from gcb.GCodeBuilder and static displays it in ebiten.
 type Viewer struct {
-	scale           float64
-	gcode           *gcb.GCodeBuilder
-	code            string
-	current         *ebiten.Image
-	imgui           *ebitenbackend.EbitenBackend
-	showMoves       bool
-	showPrinting    bool
-	showStateChange bool
-	showAdvanced    bool
-	cmdRange        [2]int32
-	playTickMs      int32
-	isPlaying       bool
-	currentFrame    int
-	t               time.Time
+	scale            float64
+	gcode            *gcb.GCodeBuilder
+	code             string
+	current          *ebiten.Image
+	imgui            *ebitenbackend.EbitenBackend
+	showMoves        bool
+	showPrinting     bool
+	showStateChange  bool
+	showAdvanced     bool
+	cmdRange         [2]int32
+	playTickMs       int32
+	isPlaying        bool
+	currentFrame     int
+	t                time.Time
+	locked           bool
+	lockedX, lockedY float64
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -307,6 +310,10 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 		mouseY = 0
 	}
 
+	if v.locked {
+		mouseX, mouseY = int(v.lockedX), int(v.lockedY)
+	}
+
 	renderable := v.current.SubImage(image.Rect(
 		int((v.scale-1)*float64(mouseX)), int((v.scale-1)*float64(mouseY)),
 		int(w+(v.scale-1)*float64(mouseX)), int(h+(v.scale-1)*float64(mouseY))))
@@ -323,6 +330,11 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 		})
 
 	v.imgui.Draw(screen)
+
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		v.locked = !v.locked
+		v.lockedX, v.lockedY = float64(mouseX), float64(mouseY)
+	}
 }
 
 func (v *Viewer) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
