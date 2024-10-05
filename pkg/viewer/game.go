@@ -240,6 +240,16 @@ Scale: %.2f
 
 		imgui.PopItemWidth()
 
+		if imgui.TreeNodeExStr("Source Code (GCode)") {
+			if imgui.BeginChildStrV("code", imgui.Vec2{-1, 300}, 0, imgui.WindowFlagsHorizontalScrollbar) {
+				v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
+				imgui.Text(v.code)
+				imgui.EndChild()
+			}
+
+			imgui.TreePop()
+		}
+
 		imgui.Text("Player:")
 		imgui.SameLine()
 		imgui.PushItemWidth(80)
@@ -272,16 +282,6 @@ Scale: %.2f
 			}
 
 			imgui.PopStyleColor()
-		}
-
-		if imgui.TreeNodeExStr("Source Code (GCode)") {
-			if imgui.BeginChildStrV("code", imgui.Vec2{-1, 300}, 0, imgui.WindowFlagsHorizontalScrollbar) {
-				v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
-				imgui.Text(v.code)
-				imgui.EndChild()
-			}
-
-			imgui.TreePop()
 		}
 
 		if imgui.Button("Export current frame") {
