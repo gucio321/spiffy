@@ -82,7 +82,7 @@ func (g *Viewer) render() *ebiten.Image {
 		endFrame = int32(g.currentFrame)
 	}
 
-	scale := g.scale * baseScale
+	scale := baseScale
 	dest := ebiten.NewImage(int((gcb.MaxX)*scale), int(startY*scale))
 	dest.Fill(colornames.Black)
 	isDrawing := false
