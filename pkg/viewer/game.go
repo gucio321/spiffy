@@ -130,7 +130,7 @@ func (g *Viewer) render() *ebiten.Image {
 				currentX, currentY = newX, newY
 			}
 		case "":
-			// noop
+			g.code += cmd.String(true, true) + "\n"
 		default:
 			glg.Warnf("Unknown command: %s", cmd.Code)
 		}
