@@ -15,7 +15,7 @@ func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 	// Push draw command
 	b.PushCommand(Command{
 		LineComment: fmt.Sprintf("Move to %v", b.currentP),
-		Code:        "G0",
+		Code:        GCodeMove,
 		Args: map[string]RelativePos{
 			"X": p.X,
 			"Y": p.Y,
@@ -122,7 +122,7 @@ func (b *GCodeBuilder) DrawCircle(pImg BetterPoint[AbsolutePos], r float32) erro
 	relP := b.absToRel(p)
 	b.PushCommand(Command{
 		LineComment: fmt.Sprintf("Draw circle with center in %v Ands at %v", relP, baseP),
-		Code:        "G2",
+		Code:        GCodeArc,
 		Args: Args{
 			"I": relP.X,
 			"J": relP.Y,
@@ -183,7 +183,7 @@ func (b *GCodeBuilder) DrawSector(pImg BetterPoint[AbsolutePos], radius float32,
 
 	b.PushCommand(Command{
 		LineComment: fmt.Sprintf("Draw sector with center in %v Ends at %v", relP, hwAbsFinalP),
-		Code:        "G2",
+		Code:        GCodeArc,
 		Args: Args{
 			"I": relP.X,
 			"J": relP.Y,
@@ -267,7 +267,7 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	endHwAbs := translate(end)
 	b.PushCommand(Command{
 		LineComment: fmt.Sprintf("Finish at %v", endHwAbs),
-		Code:        "G5",
+		Code:        GCodeBezierCubic,
 		Args: Args{
 			"I": control1Rel.X,
 			"J": control1Rel.Y,

@@ -7,13 +7,13 @@ import (
 )
 
 type Command struct {
-	Code        string
+	Code        GCode
 	Args        Args
 	LineComment string
 }
 
 func (c *Command) String(line, above bool) string {
-	result := c.Code
+	result := string(c.Code)
 	names := make([]string, 0, len(c.Args))
 	for name := range c.Args {
 		names = append(names, name)

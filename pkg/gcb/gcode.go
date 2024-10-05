@@ -119,7 +119,7 @@ func (b *GCodeBuilder) Up() error {
 
 	b.PushCommand(Command{
 		LineComment: "Stop drawing",
-		Code:        "G0",
+		Code:        GCodeMove,
 		Args: Args{
 			"Z": RelativePos(b.depth),
 		},
@@ -148,7 +148,7 @@ func (b *GCodeBuilder) Down() error {
 
 	b.PushCommand(Command{
 		LineComment: "Start drawing",
-		Code:        "G0",
+		Code:        GCodeMove,
 		Args: Args{
 			"Z": RelativePos(-b.depth),
 		},
