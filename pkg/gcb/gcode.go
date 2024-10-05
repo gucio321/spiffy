@@ -166,6 +166,13 @@ func (b *GCodeBuilder) startDrawing(p BetterPoint[AbsolutePos]) error {
 		if p != b.Current() {
 			return fmt.Errorf("should continue drawing at %v but estimated start position is %v: %w", b.currentP, p, ErrInvalidContinousLineContinuation)
 		}
+
+		if !b.isDrawing {
+			if err := b.Down(); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 
@@ -182,13 +189,10 @@ func (b *GCodeBuilder) startDrawing(p BetterPoint[AbsolutePos]) error {
 // BeginContinousLine starts drawing a continous line.
 // Every draw command's starting point should be b.Current() (and this will be checked and will panic if not true).
 // Then, no Up()/Down() will be called automatically.
+// NOTE for draw.go: every drawer should use startDrawing/endDrawing because else Begin will not be handled correctly and will cause crash. This does not call Down anymore!
 func (b *GCodeBuilder) BeginContinousLine() error {
 	if b.continousLine {
 		return fmt.Errorf("Called BeginContinousLine but already drawing continous line: %w", ErrCantChangeDrawingState)
-	}
-
-	if err := b.Down(); err != nil {
-		return err
 	}
 
 	b.continousLine = true
