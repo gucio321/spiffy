@@ -1,8 +1,11 @@
 package viewer
 
 import (
+	"bytes"
 	"fmt"
 	"image"
+	"image/png"
+	"os"
 	"time"
 
 	"github.com/AllenDang/cimgui-go/backend"
@@ -80,7 +83,7 @@ func (g *Viewer) render() *ebiten.Image {
 	}
 
 	scale := g.scale * baseScale
-	dest := ebiten.NewImage(int((gcb.MaxX+gcb.MinX)*scale), int(startY*scale))
+	dest := ebiten.NewImage(int((gcb.MaxX)*scale), int(startY*scale))
 	dest.Fill(colornames.Black)
 	isDrawing := false
 
@@ -157,7 +160,7 @@ func (v *Viewer) Update() error {
 	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
 	imgui.BeginV("Settings", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoTitleBar) //|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoNav|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs)
 
-	imgui.Text(fmt.Sprintf(`use scrool to zoom in/out, space to freez
+	imgui.Text(fmt.Sprintf(`use scrool to zoom in/out, space to freez, click+move to move
 Scale: %.2f
 `, v.scale))
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{0, 1, 0, 1})
@@ -281,6 +284,19 @@ Scale: %.2f
 			imgui.TreePop()
 		}
 
+		if imgui.Button("Export current frame") {
+			filename := "frame.png"
+			b := bytes.NewBufferString("")
+			fmt.Println("start encode")
+			png.Encode(b, v.current)
+			fmt.Println("end encode")
+			if err := os.WriteFile(filename, b.Bytes(), 0644); err != nil {
+				glg.Errorf("Error while exporting frame: %v", err)
+			}
+
+			glg.Infof("Current frame was exported as %v", filename)
+		}
+
 		imgui.End()
 	}
 
@@ -309,6 +325,7 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 
 	const w, h = 800, 600
 	mouseX, mouseY := ebiten.CursorPosition()
+
 	// negative check lol
 	if mouseX < 0 {
 		mouseX = 0
