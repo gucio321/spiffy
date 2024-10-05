@@ -21,19 +21,21 @@ const (
 )
 
 var (
-	borderColor = colornames.White
-	travelColor = colornames.Green
-	drawColor   = colornames.Red
+	borderColor      = colornames.White
+	travelColor      = colornames.Green
+	stateChangeColor = colornames.Yellow
+	drawColor        = colornames.Red
 )
 
 // Viewer creates in NewViewer an image from gcb.GCodeBuilder and static displays it in ebiten.
 type Viewer struct {
-	scale        float64
-	gcode        *gcb.GCodeBuilder
-	current      *ebiten.Image
-	imgui        *ebitenbackend.EbitenBackend
-	showMoves    bool
-	showPrinting bool
+	scale           float64
+	gcode           *gcb.GCodeBuilder
+	current         *ebiten.Image
+	imgui           *ebitenbackend.EbitenBackend
+	showMoves       bool
+	showPrinting    bool
+	showStateChange bool
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -42,11 +44,12 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 	ebitenBackend.CreateWindow("GCode Viewer", 800, 600)
 
 	result := &Viewer{
-		scale:        1,
-		gcode:        g,
-		imgui:        ebitenBackend,
-		showMoves:    true,
-		showPrinting: true,
+		scale:           1,
+		gcode:           g,
+		imgui:           ebitenBackend,
+		showMoves:       true,
+		showPrinting:    true,
+		showStateChange: true,
 	}
 
 	result.current = result.render()
@@ -83,8 +86,13 @@ func (g *Viewer) render() *ebiten.Image {
 		switch cmd.Code {
 		case "G0":
 			if _, ok := cmd.Args["Z"]; ok { // we assume this is up/down command for now
+				if g.showStateChange {
+					ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
+				}
+
 				isDrawing = !isDrawing
 			}
+
 			if _, ok := cmd.Args["X"]; ok {
 				newX := currentX + float64(cmd.Args["X"])
 				newY := currentY - float64(cmd.Args["Y"]) // this is because of 0,0 difference
@@ -132,6 +140,14 @@ Scale: %.2f
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 0, 0, 1})
 
 	if imgui.Checkbox("Show Drawing", &v.showPrinting) {
+		v.current = v.render()
+	}
+
+	imgui.PopStyleColor()
+
+	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 1, 0, 1})
+
+	if imgui.Checkbox("Show State changes (start/stop drawing)", &v.showStateChange) {
 		v.current = v.render()
 	}
 
