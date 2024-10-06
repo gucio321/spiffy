@@ -50,6 +50,7 @@ type Viewer struct {
 	t                time.Time
 	lockedX, lockedY int
 	isMouseOverUI    bool
+	w, h             int
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -58,7 +59,7 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 	ebitenBackend.CreateWindow("GCode Viewer", 800, 600)
 
 	result := &Viewer{
-		scale:           1,
+		scale:           2,
 		gcode:           g,
 		imgui:           ebitenBackend,
 		showMoves:       true,
@@ -66,6 +67,8 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		showStateChange: true,
 		cmdRange:        [2]int32{0, int32(len(g.Commands()))},
 		playTickMs:      100,
+		w:               800,
+		h:               600,
 	}
 
 	result.current = result.render()
@@ -81,7 +84,7 @@ func (g *Viewer) render() *ebiten.Image {
 	}
 
 	scale := baseScale
-	dest := ebiten.NewImage(int((gcb.MaxX)*scale), int(startY*scale))
+	dest := ebiten.NewImage(g.w, g.h)
 	dest.Fill(colornames.Black)
 	isDrawing := false
 
@@ -324,7 +327,6 @@ Scale: %.2f
 func (v *Viewer) Draw(screen *ebiten.Image) {
 	screen.Fill(colornames.Blue)
 
-	const w, h = 800, 600
 	mouseX, mouseY := int(v.lockedX), int(v.lockedY)
 
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
@@ -339,12 +341,25 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 			mouseY = 0
 		}
 
+		if mouseX > v.w {
+			mouseX = v.w
+		}
+
+		if mouseY > v.h {
+			mouseY = v.h
+		}
+
 		v.lockedX, v.lockedY = mouseX, mouseY
 	}
 
-	renderable := v.current.SubImage(image.Rect(
-		int((v.scale-1)*float64(mouseX)), int((v.scale-1)*float64(mouseY)),
-		int(w+(v.scale-1)*float64(mouseX)), int(h+(v.scale-1)*float64(mouseY))))
+	rect := image.Rect(
+		int((v.scale-1)*float64(mouseX)/v.scale),
+		int((v.scale-1)*float64(mouseY)/v.scale),
+		int(float64(v.w)+(v.scale-1)*float64(mouseX)),
+		int(float64(v.h)+(v.scale-1)*float64(mouseY)),
+	)
+
+	renderable := v.current.SubImage(rect)
 
 	if renderable.Bounds().Dx() == 0 || renderable.Bounds().Dy() == 0 {
 		renderable = v.current
@@ -361,6 +376,7 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 }
 
 func (v *Viewer) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+	v.w, v.h = outsideWidth, outsideHeight
 	// return v.dest.Bounds().Dx(), v.dest.Bounds().Dy()
 	v.imgui.Layout(outsideWidth, outsideHeight)
 	return outsideWidth, outsideHeight
