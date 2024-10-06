@@ -14,7 +14,6 @@ import (
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/kpango/glg"
 	"golang.org/x/image/colornames"
 )
@@ -49,8 +48,7 @@ type Viewer struct {
 	isPlaying        bool
 	currentFrame     int
 	t                time.Time
-	locked           bool
-	lockedX, lockedY float64
+	lockedX, lockedY int
 	isMouseOverUI    bool
 }
 
@@ -158,9 +156,9 @@ func (v *Viewer) Update() error {
 	v.imgui.BeginFrame()
 	imgui.SetNextWindowSizeV(imgui.Vec2{250, 135}, imgui.CondAlways)
 	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
-	imgui.BeginV("Settings", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoTitleBar) //|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoNav|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs)
+	imgui.BeginV("Settings", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove) //|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoNav|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoNavFocusOnAppearing|imgui.WindowFlagsNoDocking|imgui.WindowFlagsNoBackground|imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoFocusOnAppearing|imgui.WindowFlagsNoMouseInputsOnChildren|imgui.WindowFlagsNoMouseInputs|imgui.WindowFlagsNoInputs|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus|imgui.WindowFlagsNoNavFocus|imgui.WindowFlagsNoNavInputs)
 
-	imgui.Text(fmt.Sprintf(`use scrool to zoom in/out, space to freez, click+move to move
+	imgui.Text(fmt.Sprintf(`use scrool to zoom in/out, click+move to move
 Scale: %.2f
 `, v.scale))
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{0, 1, 0, 1})
@@ -327,19 +325,21 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 	screen.Fill(colornames.Blue)
 
 	const w, h = 800, 600
-	mouseX, mouseY := ebiten.CursorPosition()
+	mouseX, mouseY := int(v.lockedX), int(v.lockedY)
 
-	// negative check lol
-	if mouseX < 0 {
-		mouseX = 0
-	}
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		mouseX, mouseY = ebiten.CursorPosition()
 
-	if mouseY < 0 {
-		mouseY = 0
-	}
+		// negative check lol
+		if mouseX < 0 {
+			mouseX = 0
+		}
 
-	if v.locked {
-		mouseX, mouseY = int(v.lockedX), int(v.lockedY)
+		if mouseY < 0 {
+			mouseY = 0
+		}
+
+		v.lockedX, v.lockedY = mouseX, mouseY
 	}
 
 	renderable := v.current.SubImage(image.Rect(
@@ -358,11 +358,6 @@ func (v *Viewer) Draw(screen *ebiten.Image) {
 		})
 
 	v.imgui.Draw(screen)
-
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		v.locked = !v.locked
-		v.lockedX, v.lockedY = float64(mouseX), float64(mouseY)
-	}
 }
 
 func (v *Viewer) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
