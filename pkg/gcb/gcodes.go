@@ -13,9 +13,13 @@ const (
 	// G2 is a clockwise arc move
 	G2 GCode = "G2"
 	// G5 is a cubic B-spline move
-	G5 GCode = "G5"
+	G5  GCode = "G5"
+	G90 GCode = "G90"
+	G91 GCode = "G91"
 
 	GCodeMove        = G0
 	GCodeArc         = G2
 	GCodeBezierCubic = G5
+	GCodeAbsolutePos = G90
+	GCodeRelativePos = G91
 )
