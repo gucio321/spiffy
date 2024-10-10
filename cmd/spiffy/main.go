@@ -19,6 +19,8 @@ type flags struct {
 	commentsAbove  bool
 	noLineComments bool
 	view           bool
+	repeatN        int
+	repeatDepth    int
 }
 
 func main() {
@@ -29,6 +31,8 @@ func main() {
 	flag.BoolVar(&f.noLineComments, "nlc", false, "no line comments")
 	flag.BoolVar(&f.commentsAbove, "ca", false, "comments above")
 	flag.BoolVar(&f.view, "v", false, "view")
+	flag.IntVar(&f.repeatN, "rn", 0, "repeat N times (use with -rd)")
+	flag.IntVar(&f.repeatDepth, "rd", 5, "repeat depth (use with -rn)")
 	flag.Parse()
 
 	if _, err := os.Stat(f.inputFilePath); os.IsNotExist(err) {
@@ -44,6 +48,10 @@ func main() {
 	result, err := pkg.Parse(data)
 	if err != nil {
 		glg.Fatalf("Cannot parse file %s: %v", f.inputFilePath, err)
+	}
+
+	if f.repeatN > 0 {
+		result.Repeat(f.repeatN, f.repeatDepth)
 	}
 
 	result.Scale(float32(f.scale))
