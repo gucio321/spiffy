@@ -15,6 +15,10 @@ type Spiffy struct {
 	scale     float64
 	noComment bool
 	svg       *svg.Svg
+	repeat    struct {
+		nTimes   int
+		moveDown int
+	}
 }
 
 func NewSpiffy() *Spiffy {
@@ -32,6 +36,11 @@ func (s *Spiffy) Scale(scale float32) *Spiffy {
 func (s *Spiffy) NoComment() *Spiffy {
 	s.noComment = true
 	return s
+}
+
+func (s *Spiffy) Repeat(nTimes int, moveDown int) {
+	s.repeat.nTimes = nTimes
+	s.repeat.moveDown = moveDown
 }
 
 // GCode returns single-purpose GCode for our project.
@@ -88,106 +97,23 @@ reading:
 				return builder, err
 			}
 		}
-
-		/*
-			continue // do to skip the following xd
-			builder.Commentf("Drawing path %d", lineIdx)
-			txts := strings.Split(line.D, " ")
-			var currentType PathType
-			start := gcb.BetterPoint[gcb.AbsolutePos]{0, 0}
-
-			builder.BeginContinousLine()
-			for i := 0; i < len(txts); {
-				t := txts[i]
-				glg.Debugf("Proessing %d/%d: %s", i, len(txts), t)
-				pathType, ok := PathTypeEnum[t]
-				if ok {
-					currentType = pathType
-					glg.Debugf("Setting current operation type to %s", currentType)
-					i++
-				}
-
-				var points []gcb.BetterPoint[gcb.AbsolutePos]
-				switch currentType {
-				case PathMoveToRel, PathMoveToAbs:
-					builder.EndContinousLine()
-					points, err = s.readNPts(txts, &i, 1)
-					if err != nil {
-						return builder, err
-					}
-
-					if currentType == PathMoveToRel {
-						for i, pt := range points {
-							points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
-						}
-					}
-
-					glg.Debugf("Moving to %v", points[0])
-					start = points[0]
-					builder.Move(points[0])
-					builder.BeginContinousLine()
-				case PathLineToAbs, PathLineToRel:
-					points, err = s.readNPts(txts, &i, 1)
-					if err != nil {
-						return builder, err
-					}
-
-					if currentType == PathLineToRel {
-						for i, pt := range points {
-							points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
-						}
-					}
-
-					glg.Debugf("Drawing line to %v", points[0])
-					builder.DrawLine(builder.Current(), points[0])
-				case PathCubicBezierCurveRel, PathCubicBezierCurveAbs:
-					points, err = s.readNPts(txts, &i, 3)
-					if err != nil {
-						return builder, err
-					}
-
-					if currentType == PathCubicBezierCurveRel {
-						for i, pt := range points {
-							points[i] = builder.RelToAbs(gcb.Redefine[gcb.RelativePos](pt))
-						}
-					}
-
-					glg.Debugf("Drawing cubic bezier curve from: c1: %v c2: %v end: %v", points[0], points[1], points[2])
-
-					if err := builder.DrawBezier(20, builder.Current(), points[0], points[1], points[2]); err != nil {
-						return builder, err
-					}
-
-				case PathCloseAbs, PathCloseRel:
-					glg.Debugf("Close path to %v", start)
-					builder.DrawLine(builder.Current(), start)
-				default:
-					return builder, fmt.Errorf("%s: %w", currentType, errors.New("Not Implemented"))
-				}
-			}
-
-			builder.EndContinousLine()
-
-			builder.Separator()
-			glg.Debugf("Path %d done. Resetting to 0,0.", lineIdx)
-			builder.Move(gcb.BetterPt[gcb.AbsolutePos](0, 0))
-		*/
 	}
 
-	// 2.0: draw circles
-	/*
-		for _, c := range s.Graph.Circles {
-			builder.DrawCircleFilled(gcb.BetterPoint[gcb.AbsolutePos]{gcb.AbsolutePos(c.Cx * s.scale), gcb.AbsolutePos(c.Cy * s.scale)}, (c.R * s.scale))
-			builder.Separator()
-		}
-	*/
+	// now repeat
+	builder.Move(gcb.BetterPt[gcb.AbsolutePos](0, 0))
+	cmds := builder.Commands()
+	for i := 0; i < s.repeat.nTimes; i++ {
+		builder.PushCommand(
+			gcb.Command{
+				LineComment: "Move down and repeate the previous sequence.",
+				Code:        gcb.G0,
+				Args: map[string]gcb.RelativePos{
+					"Z": -1 * gcb.RelativePos(s.repeat.moveDown),
+				},
+			})
 
-	// 2.1: draw rects
-	/*
-		for _, r := range s.Graph.Rects {
-			builder.DrawRectFilled(gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale), gcb.AbsolutePos(r.Y*s.scale)), gcb.BetterPt(gcb.AbsolutePos(r.X*s.scale+r.W*s.scale), gcb.AbsolutePos(r.Y*s.scale+r.H*s.scale)))
-		}
-	*/
+		builder.PushCommand(cmds...)
+	}
 
 	return builder, nil
 }
