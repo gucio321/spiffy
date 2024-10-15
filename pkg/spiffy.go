@@ -17,7 +17,7 @@ type Spiffy struct {
 	svg       *svg.Svg
 	repeat    struct {
 		nTimes   int
-		moveDown int
+		moveDown float32
 	}
 }
 
@@ -38,22 +38,20 @@ func (s *Spiffy) NoComment() *Spiffy {
 	return s
 }
 
-func (s *Spiffy) Repeat(nTimes int, moveDown int) {
+func (s *Spiffy) Repeat(nTimes int, moveDown float32) {
 	s.repeat.nTimes = nTimes
 	s.repeat.moveDown = moveDown
 }
 
 // GCode returns single-purpose GCode for our project.
-func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
+func (s *Spiffy) GCode(builder *gcb.GCodeBuilder) error {
 	var err error
-
-	builder := gcb.NewGCodeBuilder()
 
 	// 1.0: draw paths
 	builder.Comment("Drawing PATHS from SVG")
 	parsedData, parsedErr := s.svg.ParseDrawingInstructions()
 	if err != nil {
-		return builder, err
+		return err
 	}
 
 	builder.BeginContinousLine()
@@ -68,12 +66,14 @@ reading:
 
 			switch cmd.Kind {
 			case svg.MoveInstruction:
+				glg.Info("Got Move instruction")
 				builder.EndContinousLine()
 				builder.Move(gcb.BetterPt[gcb.AbsolutePos](gcb.AbsolutePos(cmd.M[0]*s.scale), gcb.AbsolutePos(cmd.M[1]*s.scale)))
 				builder.BeginContinousLine()
 			case svg.CircleInstruction:
 				glg.Warn("Circle not implemented")
 			case svg.CurveInstruction:
+				glg.Info("Got Curve Instruction")
 				builder.DrawBezier(
 					10,
 					builder.Current(),
@@ -82,6 +82,7 @@ reading:
 					gcb.BetterPt(gcb.AbsolutePos(cmd.CurvePoints.T[0]*s.scale), gcb.AbsolutePos(cmd.CurvePoints.T[1]*s.scale)),
 				)
 			case svg.LineInstruction:
+				glg.Infof("Got Line instruction")
 				builder.DrawLine(
 					builder.Current(),
 					gcb.BetterPt[gcb.AbsolutePos](gcb.AbsolutePos(cmd.M[0]*s.scale), gcb.AbsolutePos(cmd.M[1]*s.scale)),
@@ -90,11 +91,13 @@ reading:
 				glg.Warn("Close not implemented")
 			case svg.PaintInstruction:
 				glg.Warn("Paint not implemented")
+			default:
+				glg.Errorf("Got unexpected instruction type: %v", cmd.Kind)
 			}
 		case err := <-parsedErr:
 			if err != nil {
 				panic(err)
-				return builder, err
+				return err
 			}
 		}
 	}
@@ -115,7 +118,7 @@ reading:
 		builder.PushCommand(cmds...)
 	}
 
-	return builder, nil
+	return nil
 }
 
 func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {

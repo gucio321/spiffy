@@ -48,7 +48,7 @@ const (
 	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80
 	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
-	MinX, MinY      = 80, 80
+	MinX, MinY      = 60, 60
 	MaxX, MaxY      = 160, 160
 	BaseDepth       = 20
 	DefaultHeadSize = 2
@@ -109,6 +109,10 @@ func (b *GCodeBuilder) PushCommand(c ...Command) *GCodeBuilder {
 
 func (b *GCodeBuilder) Commands() []Command {
 	return b.commands
+}
+
+func (b *GCodeBuilder) CleanCommands() {
+	b.commands = make([]Command, 0)
 }
 
 // Up stops active drawing
