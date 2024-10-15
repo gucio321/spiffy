@@ -1,11 +1,6 @@
 package spiffy
 
 import (
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/kpango/glg"
 	"github.com/rustyoz/svg"
@@ -145,48 +140,4 @@ reading:
 	newBuilder.PushCommand(builder.Commands()...)
 
 	return newBuilder, nil
-}
-
-func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {
-	result := gcb.BetterPoint[T]{}
-	x, err := strconv.ParseFloat(xStr, 32)
-	if err != nil {
-		return result, err
-	}
-
-	y, err := strconv.ParseFloat(yStr, 32)
-	if err != nil {
-		return result, err
-	}
-
-	return gcb.BetterPt(T(x), T(y)), nil
-}
-
-func parseStr[T ~float32](t string) (gcb.BetterPoint[T], error) {
-	parts := strings.Split(t, ",")
-	if len(parts) != 2 {
-		return gcb.BetterPt[T](0, 0), fmt.Errorf("Cant split %v: %w", t, errors.New("Unexpected paths.D parts; Not implemented"))
-	}
-
-	xStr, yStr := parts[0], parts[1]
-
-	return ptFromStr[T](xStr, yStr)
-}
-
-func (s *Spiffy) readNPts(txts []string, i *int, n int) ([]gcb.BetterPoint[gcb.AbsolutePos], error) {
-	cache := make([]gcb.BetterPoint[gcb.AbsolutePos], 0, n)
-	for j := *i; j < *i+n; j++ {
-		glg.Debugf("Reading %d/%d: %s", j-*i+1, n, txts[j])
-
-		pSrc, err := parseStr[gcb.AbsolutePos](txts[j])
-		if err != nil {
-			return nil, fmt.Errorf("Error parsing %s (%d/%d): %w", txts[j], j-*i, n, err)
-		}
-
-		cache = append(cache, pSrc.Mul(gcb.AbsolutePos(s.scale)))
-	}
-
-	*i += n
-
-	return cache, nil
 }
