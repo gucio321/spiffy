@@ -45,13 +45,13 @@ M84 X Y Z E ; Disable ALL motors
 `
 
 const (
-	// BaseX, BaseY are base coordinates for the printer.
-	BaseX, BaseY = 80, 80
 	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
-	MinX, MinY      = 80, 80
+	MinX, MinY      = 60, 60
 	MaxX, MaxY      = 160, 160
 	BaseDepth       = 20
 	DefaultHeadSize = 2
+	// BaseX, BaseY are base coordinates for the printer.
+	BaseX, BaseY = 80, 80 // this is from "so called" PREAMBUŁA
 )
 
 // GCodeBuilder allows to build GCode. It implements several drawing methods.
