@@ -1,6 +1,8 @@
 package spiffy
 
 import (
+	"errors"
+
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/kpango/glg"
 	"github.com/rustyoz/svg"
@@ -52,8 +54,6 @@ func (s *Spiffy) Repeat(nTimes int, moveDown float64) {
 
 // GCode returns single-purpose GCode for our project.
 func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
-	var err error
-
 	builder := gcb.NewGCodeBuilder()
 	if s.depth.workingDepth != 0 {
 		builder.SetDepth(gcb.RelativePos(s.depth.workingDepth))
@@ -62,8 +62,8 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 	// 1.0: draw paths
 	builder.Comment("Drawing PATHS from SVG")
 	parsedData, parsedErr := s.svg.ParseDrawingInstructions()
-	if err != nil {
-		return builder, err
+	if parsedData == nil || parsedErr == nil {
+		return builder, errors.New("nil parsedData or parsedErr")
 	}
 
 	builder.BeginContinousLine()
