@@ -21,8 +21,9 @@ import (
 var _ ebiten.Game = &Viewer{}
 
 const (
-	baseScale = 7.0
-	startY    = 600 / baseScale
+	screenW, screenH = 800, 600
+	baseScale        = screenH/float64(gcb.MaxY-gcb.MinY) - .5
+	startY           = 600 / baseScale
 )
 
 var (
@@ -54,9 +55,10 @@ type Viewer struct {
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
+	fmt.Println(baseScale)
 	ebitenBackend := ebitenbackend.NewEbitenBackend()
 	backend.CreateBackend(ebitenBackend)
-	ebitenBackend.CreateWindow("GCode Viewer", 800, 600)
+	ebitenBackend.CreateWindow("GCode Viewer", screenW, screenH)
 
 	result := &Viewer{
 		scale:           1,
@@ -67,8 +69,8 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		showStateChange: true,
 		cmdRange:        [2]int32{0, int32(len(g.Commands()))},
 		playTickMs:      100,
-		w:               800,
-		h:               600,
+		w:               screenW,
+		h:               screenH,
 	}
 
 	result.current = result.render()
@@ -106,7 +108,7 @@ func (g *Viewer) render() *ebiten.Image {
 		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
 		borderColor)
 
-	currentX, currentY := 0.0, float64(startY)
+	currentX, currentY := float64(gcb.BaseX-gcb.MinX), float64(startY)-(gcb.BaseY-gcb.MinY)
 
 	for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
 		switch cmd.Code {
