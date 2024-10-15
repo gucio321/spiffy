@@ -19,12 +19,24 @@ type Spiffy struct {
 		nTimes   int
 		moveDown float64
 	}
+	depth struct {
+		workingDepth float64
+		calibration  float64
+	}
 }
 
 func NewSpiffy() *Spiffy {
 	return &Spiffy{
 		scale: 1.0,
 	}
+}
+
+// Depth sets depths stuff
+// workindDepth is how much will it go down to draw/stop drawing
+// calibration is how much it will go down befor all
+func (s *Spiffy) Depths(workingDepth, calibration float64) {
+	s.depth.workingDepth = workingDepth
+	s.depth.calibration = calibration
 }
 
 // TODO: fix types
@@ -48,6 +60,9 @@ func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
 	var err error
 
 	builder := gcb.NewGCodeBuilder()
+	if s.depth.workingDepth != 0 {
+		builder.SetDepth(gcb.RelativePos(s.depth.workingDepth))
+	}
 
 	// 1.0: draw paths
 	builder.Comment("Drawing PATHS from SVG")
@@ -115,7 +130,21 @@ reading:
 		builder.PushCommand(cmds...)
 	}
 
-	return builder, nil
+	newBuilder := gcb.NewGCodeBuilder()
+	if s.depth.calibration != 0 {
+		newBuilder.PushCommand(
+			gcb.Command{
+				LineComment: "Calibrate the depth (move down)",
+				Code:        gcb.G0,
+				Args: map[string]gcb.RelativePos{
+					"Z": -1 * gcb.RelativePos(s.depth.calibration),
+				},
+			})
+	}
+
+	newBuilder.PushCommand(builder.Commands()...)
+
+	return newBuilder, nil
 }
 
 func ptFromStr[T ~float32](xStr, yStr string) (gcb.BetterPoint[T], error) {
