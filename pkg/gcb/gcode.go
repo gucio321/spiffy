@@ -46,9 +46,9 @@ M84 X Y Z E ; Disable ALL motors
 
 const (
 	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
-	MinX, MinY      = 60, 60
-	MaxX, MaxY      = 160, 160
-	BaseDepth       = 20
+	MinX, MinY      = 35, 25
+	MaxX, MaxY      = 210, 200
+	BaseDepth       = 50
 	DefaultHeadSize = 2
 	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80 // this is from "so called" PREAMBUŁA
