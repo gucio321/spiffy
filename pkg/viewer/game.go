@@ -115,7 +115,7 @@ func (g *Viewer) render() *ebiten.Image {
 
 	ebitenutil.DebugPrintAt(dest,
 		fmt.Sprintf("Min X: %d, Max X: %d, W: %d", gcb.MinX, gcb.MaxX, (gcb.MaxX-gcb.MinX)),
-		int((gcb.MaxX-gcb.MinX)*scale/2), int((startY-(gcb.MaxY-gcb.MinY))*scale)-10,
+		int((gcb.MaxX-gcb.MinX)*scale/2), int((startY-(gcb.MaxY-gcb.MinY))*scale)-20,
 	)
 
 	currentX, currentY := float64(gcb.BaseX-gcb.MinX), float64(startY)-(gcb.BaseY-gcb.MinY)
