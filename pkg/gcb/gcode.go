@@ -62,7 +62,7 @@ type GCodeBuilder struct {
 	lineComments        bool
 	commentsAbove       bool
 	commands            []Command
-	depth               int
+	depth               RelativePos
 	headSize            int
 	isDrawing           bool
 	currentP            BetterPoint[HardwareAbsolutePos]
@@ -91,7 +91,7 @@ func (b *GCodeBuilder) Comments(line, above bool) *GCodeBuilder {
 }
 
 // SetDepth sets how deep the Heas should go.
-func (b *GCodeBuilder) SetDepth(depth int) *GCodeBuilder {
+func (b *GCodeBuilder) SetDepth(depth RelativePos) *GCodeBuilder {
 	b.depth = depth
 	return b
 }
