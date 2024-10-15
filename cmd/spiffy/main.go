@@ -9,6 +9,7 @@ import (
 	"github.com/kpango/glg"
 
 	pkg "github.com/gucio321/spiffy/pkg"
+	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/gucio321/spiffy/pkg/viewer"
 )
 
@@ -21,6 +22,9 @@ type flags struct {
 	view           bool
 	repeatN        int
 	repeatDepth    float64
+	startZ         float64
+	depthDelta     float64
+	force          bool
 }
 
 func main() {
@@ -33,7 +37,14 @@ func main() {
 	flag.BoolVar(&f.view, "v", false, "view")
 	flag.IntVar(&f.repeatN, "rn", 0, "repeat N times (use with -rd)")
 	flag.Float64Var(&f.repeatDepth, "rd", 5, "repeat depth (use with -rn)")
+	flag.Float64Var(&f.startZ, "sz", 0, "start Z (use along with -dz for delta zet)")
+	flag.Float64Var(&f.depthDelta, "dz", gcb.BaseDepth, "delta Z (use along with -sz for start zet)")
+	flag.BoolVar(&f.force, "f", false, "force")
 	flag.Parse()
+
+	if f.startZ != 0 && f.depthDelta == gcb.BaseDepth && !f.force {
+		glg.Fatal("Please specify -dz (-f to force)")
+	}
 
 	if _, err := os.Stat(f.inputFilePath); os.IsNotExist(err) {
 		flag.Usage()
@@ -52,6 +63,10 @@ func main() {
 
 	if f.repeatN > 0 {
 		result.Repeat(f.repeatN, f.repeatDepth)
+	}
+
+	if f.startZ != 0 {
+		result.Depths(f.depthDelta, f.startZ)
 	}
 
 	result.Scale(float32(f.scale))
