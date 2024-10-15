@@ -20,7 +20,7 @@ type flags struct {
 	noLineComments bool
 	view           bool
 	repeatN        int
-	repeatDepth    int
+	repeatDepth    float64
 }
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	flag.BoolVar(&f.commentsAbove, "ca", false, "comments above")
 	flag.BoolVar(&f.view, "v", false, "view")
 	flag.IntVar(&f.repeatN, "rn", 0, "repeat N times (use with -rd)")
-	flag.IntVar(&f.repeatDepth, "rd", 5, "repeat depth (use with -rn)")
+	flag.Float64Var(&f.repeatDepth, "rd", 5, "repeat depth (use with -rn)")
 	flag.Parse()
 
 	if _, err := os.Stat(f.inputFilePath); os.IsNotExist(err) {

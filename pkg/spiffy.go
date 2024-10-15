@@ -17,7 +17,7 @@ type Spiffy struct {
 	svg       *svg.Svg
 	repeat    struct {
 		nTimes   int
-		moveDown int
+		moveDown float64
 	}
 }
 
@@ -38,7 +38,7 @@ func (s *Spiffy) NoComment() *Spiffy {
 	return s
 }
 
-func (s *Spiffy) Repeat(nTimes int, moveDown int) {
+func (s *Spiffy) Repeat(nTimes int, moveDown float64) {
 	s.repeat.nTimes = nTimes
 	s.repeat.moveDown = moveDown
 }
