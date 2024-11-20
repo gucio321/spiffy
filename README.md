@@ -28,6 +28,7 @@ Since our svg parser is not perfect and only supports paths, we use
 - GCode: https://marlinfw.org/docs/gcode/G005.html
 - SVG: https://developer.mozilla.org/en-US/docs/Web/SVG
 - testing tool: https://nraynaud.github.io/webgcode/
+- Inkscape API ref: https://wiki.inkscape.org/wiki/Action
 
 
 # Legal notes.
