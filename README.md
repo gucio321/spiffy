@@ -8,6 +8,11 @@ Spiffy is a SVG to GCode converter.
 `cmd/spiffy` is intended to take a SVG file and generate a GCode file that can be used to engrave the SVG
 onto a material using a CNC machine.
 
+## Requirements
+
+Since our svg parser is not perfect and only supports paths, we use
+`Inkscape` to convert any SVG to the supported format.
+
 ## Progress/Current status
 
 - [X] Load SVG file
