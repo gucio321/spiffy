@@ -4,6 +4,7 @@ go 1.22.3
 
 require (
 	github.com/AllenDang/cimgui-go v1.0.2
+	github.com/galihrivanto/go-inkscape v0.1.5
 	github.com/hajimehoshi/ebiten/v2 v2.8.0
 	github.com/kpango/glg v1.6.15
 	github.com/rustyoz/svg v0.0.0-20240916132020-37383a9eebb1
@@ -14,6 +15,7 @@ require (
 	github.com/ebitengine/gomobile v0.0.0-20240911145611-4856209ac325 // indirect
 	github.com/ebitengine/hideconsole v1.0.0 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
+	github.com/galihrivanto/runner v0.1.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
 	github.com/kpango/fastime v1.1.9 // indirect

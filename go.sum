@@ -10,6 +10,10 @@ github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj
 github.com/ebitengine/hideconsole v1.0.0/go.mod h1:hTTBTvVYWKBuxPr7peweneWdkUwEuHuB3C1R/ielR1A=
 github.com/ebitengine/purego v0.8.0 h1:JbqvnEzRvPpxhCJzJJ2y0RbiZ8nyjccVUrSM3q+GvvE=
 github.com/ebitengine/purego v0.8.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/galihrivanto/go-inkscape v0.1.5 h1:wXVcUrDYwdc91pJedIjSWCE00odH06kJkst30OjDb64=
+github.com/galihrivanto/go-inkscape v0.1.5/go.mod h1:Oob2V90erGN688iltRZMO7mTkRWaQra5lw2t6m4+EjQ=
+github.com/galihrivanto/runner v0.1.1 h1:c6jClxYEe8FntRg4A3zHLBQDXfO/0I3RU4LpouGjqXA=
+github.com/galihrivanto/runner v0.1.1/go.mod h1:w4LT8uzPbepnSAuwVq6/7dVMz1hcW40FNWIgg8IHBaI=
 github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
 github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
 github.com/hajimehoshi/ebiten/v2 v2.8.0 h1:CZF2PAksTG7vee9mu1Ok9QHqPyic0rTmIQvepYjs66A=
