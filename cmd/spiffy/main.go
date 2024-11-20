@@ -66,6 +66,7 @@ func main() {
 		"export-type:svg",
 		"select-all",
 		"object-to-path",
+		"path-simplify",
 		"export-do",
 	)
 
