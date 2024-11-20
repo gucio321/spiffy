@@ -48,7 +48,7 @@ const (
 	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
 	MinX, MinY      = 35, 25
 	MaxX, MaxY      = 210, 200
-	BaseDepth       = 50
+	BaseDepth       = 26
 	DefaultHeadSize = 2
 	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80 // this is from "so called" PREAMBUŁA

@@ -110,7 +110,7 @@ reading:
 	}
 
 	// now repeat
-	builder.Move(gcb.BetterPt[gcb.AbsolutePos](0, 0))
+	builder.Move(gcb.BetterPt[gcb.AbsolutePos](gcb.BaseX-gcb.MinX, gcb.BaseY-gcb.MinY))
 	cmds := builder.Commands()
 	for i := 0; i < s.repeat.nTimes; i++ {
 		builder.PushCommand(
