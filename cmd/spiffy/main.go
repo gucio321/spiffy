@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	inkscape "github.com/galihrivanto/go-inkscape"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/kpango/glg"
 
@@ -51,7 +52,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	data, err := os.ReadFile(f.inputFilePath)
+	inkscapeProxy := inkscape.NewProxy(inkscape.Verbose(false))
+	if err := inkscapeProxy.Run(); err != nil {
+		glg.Fatalf("Cannot run inkscape: %v", err)
+	}
+
+	defer inkscapeProxy.Close()
+
+	convertedFile := f.inputFilePath + ".spiffy.svg"
+	inkscapeProxy.RawCommands(
+		fmt.Sprintf("file-open:%s", f.inputFilePath),
+		fmt.Sprintf("export-filename:%s", convertedFile),
+		"export-type:svg",
+		"select-all",
+		"object-to-path",
+		"export-do",
+	)
+
+	data, err := os.ReadFile(convertedFile)
 	if err != nil {
 		glg.Fatalf("Cannot read file %s: %v", f.inputFilePath, err)
 	}
