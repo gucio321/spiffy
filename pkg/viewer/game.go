@@ -90,14 +90,6 @@ func (g *Viewer) render() *ebiten.Image {
 	dest.Fill(colornames.Black)
 	isDrawing := false
 
-	/*
-		ebitenutil.DrawLine(dest, gcb.MinX*scale, gcb.MinY*scale, gcb.MinX*scale, gcb.MaxY*scale, borderColor)
-		ebitenutil.DrawLine(dest, gcb.MinX*scale, gcb.MaxY*scale, gcb.MaxX*scale, gcb.MaxY*scale, borderColor)
-		ebitenutil.DrawLine(dest, gcb.MaxX*scale, gcb.MaxY*scale, gcb.MaxX*scale, gcb.MinY*scale, borderColor)
-		ebitenutil.DrawLine(dest, gcb.MaxX*scale, gcb.MinY*scale, gcb.MinX*scale, gcb.MinY*scale, borderColor)
-		currentX, currentY := float64(gcb.MinX), float64(gcb.MaxY)
-	*/
-	//ebitenutil.DrawLine(dest, (gcb.MaxX-gcb.MinX)*scale, (gcb.MaxY-gcb.MinY)*scale, gcb.MinX*scale, gcb.MaxY*scale, borderColor)
 	ebitenutil.DrawLine(dest,
 		(gcb.MaxX-gcb.MinX)*scale, startY*scale,
 		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
