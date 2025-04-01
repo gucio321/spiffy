@@ -52,6 +52,8 @@ type Viewer struct {
 	lockedX, lockedY int
 	isMouseOverUI    bool
 	w, h             int
+	axesModifiers    [2]int // x, y. supposed to be 1 or -1 for mirroring.
+	xMirror, yMirror bool
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -71,6 +73,7 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		playTickMs:      100,
 		w:               screenW,
 		h:               screenH,
+		axesModifiers:   [2]int{1, 1},
 	}
 
 	result.current = result.render()
@@ -110,7 +113,21 @@ func (g *Viewer) render() *ebiten.Image {
 		int((gcb.MaxX-gcb.MinX)*scale/2), int((startY-(gcb.MaxY-gcb.MinY))*scale)-20,
 	)
 
-	currentX, currentY := float64(gcb.BaseX-gcb.MinX), float64(startY)-(gcb.BaseY-gcb.MinY)
+	var currentX, currentY float64
+
+	switch g.axesModifiers[0] {
+	case 1:
+		currentX = float64(gcb.BaseX - gcb.MinX)
+	case -1:
+		currentX = float64(gcb.MaxX-gcb.MinX) - float64(gcb.BaseX-gcb.MinX)
+	}
+
+	switch g.axesModifiers[1] {
+	case 1:
+		currentY = float64(startY) - (gcb.BaseY - gcb.MinY)
+	case -1:
+		currentY = float64(gcb.MaxY-gcb.MinY) - (float64(startY) - (gcb.BaseY - gcb.MinY))
+	}
 
 	for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
 		switch cmd.Code {
@@ -125,9 +142,12 @@ func (g *Viewer) render() *ebiten.Image {
 				isDrawing = cmd.Args["Z"] < 0
 			}
 
-			if _, ok := cmd.Args["X"]; ok {
-				newX := currentX + float64(cmd.Args["X"])
-				newY := currentY - float64(cmd.Args["Y"]) // this is because of 0,0 difference
+			_, xChange := cmd.Args["X"]
+			_, yChange := cmd.Args["Y"]
+			if xChange || yChange {
+				newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
+				newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
+
 				c := drawColor
 				if !isDrawing {
 					c = travelColor
@@ -202,6 +222,30 @@ Scale: %.2f
 		imgui.Begin("Advanced GCode")
 		v.isMouseOverUI = v.isMouseOverUI || imgui.IsWindowHovered()
 		imgui.BeginDisabledV(v.isPlaying)
+
+		imgui.Text("Mirroring:")
+		imgui.SameLine()
+		if imgui.Checkbox("X Mirror", &v.xMirror) {
+			if v.xMirror {
+				v.axesModifiers[1] = -1
+			} else {
+				v.axesModifiers[1] = 1
+			}
+
+			v.current = v.render()
+		}
+
+		imgui.SameLine()
+		if imgui.Checkbox("Y Mirror", &v.yMirror) {
+			if v.yMirror {
+				v.axesModifiers[0] = -1
+			} else {
+				v.axesModifiers[0] = 1
+			}
+
+			v.current = v.render()
+		}
+
 		imgui.Text("Command Range:")
 
 		imgui.PushItemWidth(80)
