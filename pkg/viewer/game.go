@@ -121,7 +121,8 @@ func (g *Viewer) render() *ebiten.Image {
 					ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
 				}
 
-				isDrawing = !isDrawing
+				// also primitive (was !isDrawing earlier), but at least handles multiple Z commands
+				isDrawing = cmd.Args["Z"] < 0
 			}
 
 			if _, ok := cmd.Args["X"]; ok {
