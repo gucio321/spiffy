@@ -18,11 +18,10 @@ Since our svg parser is not perfect and only supports paths, we use
 - [X] Load SVG file
 - [X] Parse SVG to something GO-readable
 - [ ] Generate GCode from SVG
-   - [ ] Paths (for now only M (Absolute Move) supported)
+   - [X] Paths
    - [X] Circles
    - [X] Rectangles
-   - [ ] Bezier curves
-   - [ ] Text
+   - [X] Text (if converted to paths via ikscape)
 
 ## Reference
 - GCode: https://marlinfw.org/docs/gcode/G005.html
