@@ -85,6 +85,7 @@ func main() {
 
 	defer inkscapeProxy.Close()
 
+	glg.Infof("running inkscape pre-processing")
 	convertedFile := f.InputFilePath + ".spiffy.svg"
 	inkscapeProxy.RawCommands(
 		fmt.Sprintf("file-open:%s", f.InputFilePath),
@@ -95,6 +96,8 @@ func main() {
 		"path-simplify",
 		"export-do",
 	)
+
+	glg.Info("inkscape done.")
 
 	data, err := os.ReadFile(convertedFile)
 	if err != nil {
