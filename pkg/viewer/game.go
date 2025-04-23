@@ -54,6 +54,9 @@ type Viewer struct {
 	w, h             int
 	axesModifiers    [2]int // x, y. supposed to be 1 or -1 for mirroring.
 	xMirror, yMirror bool
+	Y                struct {
+		Min, Max, Delta int
+	}
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -75,6 +78,31 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		h:               screenH,
 		axesModifiers:   [2]int{1, 1},
 	}
+
+	// claculate Y stats
+	current := 0
+	for _, cmd := range g.Commands() {
+		if cmd.Code != "G0" {
+			continue
+		}
+
+		z, ok := cmd.Args["Z"]
+		if !ok {
+			continue
+		}
+
+		current += int(z)
+		if current < result.Y.Min {
+			result.Y.Min = current
+		}
+
+		if current > result.Y.Max {
+			result.Y.Max = current
+		}
+	}
+
+	result.Y.Delta = result.Y.Max - result.Y.Min
+	fmt.Println(result.Y)
 
 	result.current = result.render()
 	return result
@@ -129,6 +157,7 @@ func (g *Viewer) render() *ebiten.Image {
 		currentY = float64(gcb.MaxY-gcb.MinY) - (float64(startY) - (gcb.BaseY - gcb.MinY))
 	}
 
+	currentZ := 0
 	for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
 		switch cmd.Code {
 		case "G0":
@@ -138,8 +167,7 @@ func (g *Viewer) render() *ebiten.Image {
 					ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
 				}
 
-				// also primitive (was !isDrawing earlier), but at least handles multiple Z commands
-				isDrawing = cmd.Args["Z"] < 0
+				currentZ += int(cmd.Args["Z"])
 			}
 
 			_, xChange := cmd.Args["X"]
@@ -148,10 +176,7 @@ func (g *Viewer) render() *ebiten.Image {
 				newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
 				newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
 
-				c := drawColor
-				if !isDrawing {
-					c = travelColor
-				}
+				c := GreenToRedHSV(float64(currentZ-g.Y.Min) / float64(g.Y.Delta))
 
 				if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
 					ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
