@@ -16,20 +16,31 @@ import (
 )
 
 type Flags struct {
-	InputFilePath  string
+	// InputFile represents an SVG file
+	InputFilePath string
+	// OutputFile is a path to the gcode.
 	OutputFilePath string
-	Scale          float64
-	CommentsAbove  bool
+	// Scale up/down SVG
+	Scale float64
+	// CommentsAbove puts additional debug comments in gcode if true.
+	CommentsAbove bool
+	// NoLineComments removes comments with position hints if true
 	NoLineComments bool
-	View           bool
-	RepeatN        int
-	RepeatDepth    float64
-	startZ         float64
-	DepthDelta     float64
-	force          bool
-	preset         string
-	makePreset     bool
-	showGCode      bool
+	// View starts viewer app
+	View bool
+	// RepeatN - execute svg once go down a bit and repeat N times.
+	RepeatN int
+	// RepeatDepth - go down this much after each repeat.
+	RepeatDepth float64
+	// startZ is called calibrationZ in another part of the code.
+	// It describes how much to go down before starting code execution.
+	StartZ float64
+	// DepthDelta describes delta between draw/not draw state.
+	DepthDelta float64
+	force      bool
+	preset     string
+	makePreset bool
+	showGCode  bool
 }
 
 func main() {
@@ -42,7 +53,7 @@ func main() {
 	flag.BoolVar(&f.View, "v", false, "view")
 	flag.IntVar(&f.RepeatN, "rn", 0, "repeat N times (use with -rd)")
 	flag.Float64Var(&f.RepeatDepth, "rd", 5, "repeat depth (use with -rn)")
-	flag.Float64Var(&f.startZ, "sz", 0, "start Z (use along with -dz for delta zet)")
+	flag.Float64Var(&f.StartZ, "sz", 0, "start Z (use along with -dz for delta zet)")
 	flag.Float64Var(&f.DepthDelta, "dz", gcb.BaseDepth, "delta Z (use along with -sz for start zet)")
 	flag.BoolVar(&f.force, "f", false, "force")
 	flag.StringVar(&f.preset, "preset", "", "JSON preset file path. This will override all other flags")
@@ -71,7 +82,7 @@ func main() {
 		}
 	}
 
-	if f.startZ != 0 && f.DepthDelta == gcb.BaseDepth && !f.force {
+	if f.StartZ != 0 && f.DepthDelta == gcb.BaseDepth && !f.force {
 		glg.Fatal("Please specify -dz (-f to force)")
 	}
 
@@ -115,8 +126,8 @@ func main() {
 		result.Repeat(f.RepeatN, f.RepeatDepth)
 	}
 
-	if f.startZ != 0 {
-		result.Depths(f.DepthDelta, f.startZ)
+	if f.StartZ != 0 {
+		result.Depths(f.DepthDelta, f.StartZ)
 	}
 
 	result.Scale(float32(f.Scale))
