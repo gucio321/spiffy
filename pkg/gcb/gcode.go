@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/gucio321/spiffy/pkg/workspace"
 	"github.com/kpango/glg"
 )
 
@@ -17,8 +18,8 @@ type (
 	// starts form 0,0
 	AbsolutePos float32
 	// HardwareAbsolutePos describes a coordinates on Hardware.
-	// This is because our printer has an "offset" from real 0.0 that should be considered (see MinX, MinY)
-	// is AbsolutePos+MinX/MinY
+	// This is because our printer has an "offset" from real 0.0 that should be considered (see b.workspace.MinX, b.workspace.MinY)
+	// is AbsolutePos+b.workspace.MinX/b.workspace.MinY
 	HardwareAbsolutePos float32
 )
 
@@ -44,12 +45,11 @@ M84 X Y Z E ; Disable ALL motors
 ;; END POSTABUA
 `
 
+var BaseDepth RelativePos = 26
+
 const (
-	// MinX, MinY are minimum coordinates for the Printers Drawing Area.
-	MinX, MinY      = 35, 25
-	MaxX, MaxY      = 210, 200
-	BaseDepth       = 26
-	DefaultHeadSize = 2
+	DefaultWorkspace = "default"
+	DefaultHeadSize  = 2
 	// BaseX, BaseY are base coordinates for the printer.
 	BaseX, BaseY = 80, 80 // this is from "so called" PREAMBUŁA
 )
@@ -59,6 +59,7 @@ const (
 // NOTE: even considering the comment on HardwareAbsolutePos, all external API for this object
 // uses AbsolutePos - position absolute to image you want to draw (so starting from 0,0)
 type GCodeBuilder struct {
+	workspace           *workspace.Workspace
 	lineComments        bool
 	commentsAbove       bool
 	commands            []Command
@@ -71,8 +72,9 @@ type GCodeBuilder struct {
 }
 
 // NewGCodeBuilder creates new GCodeBuilder with default values.
-func NewGCodeBuilder() *GCodeBuilder {
+func NewGCodeBuilder(workspace *workspace.Workspace) *GCodeBuilder {
 	return &GCodeBuilder{
+		workspace:     workspace,
 		lineComments:  true,
 		commentsAbove: false,
 		currentP:      BetterPoint[HardwareAbsolutePos]{BaseX, BaseY},
@@ -82,6 +84,11 @@ func NewGCodeBuilder() *GCodeBuilder {
 		postamble:     DefaultPostamble,
 		continousLine: false,
 	}
+}
+
+// Workspace is a getter for read-only field workspace.
+func (b *GCodeBuilder) Workspace() *workspace.Workspace {
+	return b.workspace
 }
 
 func (b *GCodeBuilder) Comments(line, above bool) *GCodeBuilder {
@@ -215,7 +222,7 @@ func (b *GCodeBuilder) EndContinousLine() error {
 
 // Current returns current position.
 func (b *GCodeBuilder) Current() BetterPoint[AbsolutePos] {
-	return Redefine[AbsolutePos](b.currentP.Add(BetterPt(HardwareAbsolutePos(-MinX), HardwareAbsolutePos(-MinY))))
+	return Redefine[AbsolutePos](b.currentP.Add(BetterPt(HardwareAbsolutePos(-b.workspace.MinX), HardwareAbsolutePos(-b.workspace.MinY))))
 }
 
 // String returns built GCode.
@@ -270,13 +277,13 @@ func (b *GCodeBuilder) String() string {
 
 func (b *GCodeBuilder) RelToAbs(p BetterPoint[RelativePos]) BetterPoint[AbsolutePos] {
 	result := Redefine[AbsolutePos](p)
-	result.X += AbsolutePos(b.currentP.X - MinX)
-	result.Y += AbsolutePos(b.currentP.Y - MinY)
+	result.X += AbsolutePos(b.currentP.X - HardwareAbsolutePos(b.workspace.MinX))
+	result.Y += AbsolutePos(b.currentP.Y - HardwareAbsolutePos(b.workspace.MinY))
 	return result
 }
 
 func (b *GCodeBuilder) relToHwAbs(p BetterPoint[RelativePos]) BetterPoint[HardwareAbsolutePos] {
-	return validateHwAbs(Redefine[HardwareAbsolutePos](p).Add(b.currentP))
+	return b.validateHwAbs(Redefine[HardwareAbsolutePos](p).Add(b.currentP))
 }
 
 func (b *GCodeBuilder) absToRel(p BetterPoint[HardwareAbsolutePos]) BetterPoint[RelativePos] {
@@ -300,30 +307,30 @@ func validateAbs(p BetterPoint[AbsolutePos]) BetterPoint[AbsolutePos] {
 	return p
 }
 
-func validateHwAbs(p BetterPoint[HardwareAbsolutePos]) BetterPoint[HardwareAbsolutePos] {
+func (b *GCodeBuilder) validateHwAbs(p BetterPoint[HardwareAbsolutePos]) BetterPoint[HardwareAbsolutePos] {
 	switch {
-	case p.X < MinX:
+	case p.X < HardwareAbsolutePos(b.workspace.MinX):
 		_, file, line, ok := runtime.Caller(2)
 		glg.Infof("Called at: %s %d %v\n", file, line, ok)
-		glg.Fatalf("Absolute position must be larger than %d, got %f", MinX, p.X)
-	case p.X > MaxX:
+		glg.Fatalf("Absolute position must be larger than %d, got %f", b.workspace.MinX, p.X)
+	case p.X > HardwareAbsolutePos(b.workspace.MaxX):
 		_, file, line, ok := runtime.Caller(2)
 		glg.Infof("Called at: %s %d %v\n", file, line, ok)
-		glg.Fatalf("Absolute position must be less than %v, got %f", MaxX, p.X)
-	case p.Y < MinY:
+		glg.Fatalf("Absolute position must be less than %v, got %f", b.workspace.MaxX, p.X)
+	case p.Y < HardwareAbsolutePos(b.workspace.MinY):
 		_, file, line, ok := runtime.Caller(2)
 		glg.Infof("Called at: %s %d %v\n", file, line, ok)
-		glg.Fatalf("Absolute position must be larger than %d, got %f", MinY, p.Y)
-	case p.Y > MaxY:
+		glg.Fatalf("Absolute position must be larger than %d, got %f", b.workspace.MinY, p.Y)
+	case p.Y > HardwareAbsolutePos(b.workspace.MaxY):
 		_, file, line, ok := runtime.Caller(2)
 		glg.Infof("Called at: %s %d %v\n", file, line, ok)
-		glg.Fatalf("Absolute position must be less than %v, got %f", MaxY, p.Y)
+		glg.Fatalf("Absolute position must be less than %v, got %f", b.workspace.MaxY, p.Y)
 	}
 
 	return p
 }
 
-// translate converts AbsolutePos to HardwareAbsolutePos by adding MinX/Y
-func translate(p BetterPoint[AbsolutePos]) BetterPoint[HardwareAbsolutePos] {
-	return validateHwAbs(Redefine[HardwareAbsolutePos](p.Add(BetterPoint[AbsolutePos]{MinX, MinY})))
+// translate converts AbsolutePos to HardwareAbsolutePos by adding b.workspace.MinX/Y
+func (b *GCodeBuilder) translate(p BetterPoint[AbsolutePos]) BetterPoint[HardwareAbsolutePos] {
+	return b.validateHwAbs(Redefine[HardwareAbsolutePos](p.Add(BetterPoint[AbsolutePos]{AbsolutePos(b.workspace.MinX), AbsolutePos(b.workspace.MinY)})))
 }

@@ -2,8 +2,10 @@ package spiffy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gucio321/spiffy/pkg/gcb"
+	"github.com/gucio321/spiffy/pkg/workspace"
 	"github.com/kpango/glg"
 	"github.com/rustyoz/svg"
 )
@@ -20,12 +22,23 @@ type Spiffy struct {
 		workingDepth float64
 		calibration  float64
 	}
+	workspace     *workspace.Workspace
+	workspaceName string
 }
 
 func NewSpiffy() *Spiffy {
 	return &Spiffy{
-		scale: 1.0,
+		workspaceName: gcb.DefaultWorkspace,
+		scale:         1.0,
 	}
+}
+
+func (s *Spiffy) Workspace(workspace *workspace.Workspace) {
+	s.workspace = workspace
+}
+
+func (s *Spiffy) WorkspaceName(name string) {
+	s.workspaceName = name
 }
 
 // Depth sets depths stuff
@@ -54,7 +67,15 @@ func (s *Spiffy) Repeat(nTimes int, moveDown float64) {
 
 // GCode returns single-purpose GCode for our project.
 func (s *Spiffy) GCode() (*gcb.GCodeBuilder, error) {
-	builder := gcb.NewGCodeBuilder()
+	if s.workspace == nil {
+		var err error
+		s.workspace, err = workspace.Get(s.workspaceName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get workspace from name %s: %w", s.workspaceName, err)
+		}
+	}
+
+	builder := gcb.NewGCodeBuilder(s.workspace)
 	if s.depth.workingDepth != 0 {
 		builder.SetDepth(gcb.RelativePos(s.depth.workingDepth))
 	}
@@ -110,7 +131,7 @@ reading:
 	}
 
 	// now repeat
-	builder.Move(gcb.BetterPt[gcb.AbsolutePos](gcb.BaseX-gcb.MinX, gcb.BaseY-gcb.MinY))
+	builder.Move(gcb.BetterPt[gcb.AbsolutePos](gcb.AbsolutePos(gcb.BaseX)-gcb.AbsolutePos(s.workspace.MinX), gcb.AbsolutePos(gcb.BaseY)-gcb.AbsolutePos(s.workspace.MinY)))
 	cmds := builder.Commands()
 	for i := 0; i < s.repeat.nTimes; i++ {
 		builder.PushCommand(
@@ -125,7 +146,7 @@ reading:
 		builder.PushCommand(cmds...)
 	}
 
-	newBuilder := gcb.NewGCodeBuilder()
+	newBuilder := gcb.NewGCodeBuilder(s.workspace)
 	if s.depth.calibration != 0 {
 		newBuilder.PushCommand(
 			gcb.Command{

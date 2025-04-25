@@ -4,11 +4,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gucio321/spiffy/pkg/workspace"
 	"github.com/kpango/glg"
 )
 
 func NewGCodeBuilderFromGCode(gcode []byte) (*GCodeBuilder, error) {
-	result := NewGCodeBuilder()
+	workspace, err := workspace.Get(DefaultWorkspace)
+	if err != nil {
+		return nil, err
+	}
+
+	result := NewGCodeBuilder(workspace)
 	lines := strings.Split(string(gcode), "\n")
 	positioning := G90
 

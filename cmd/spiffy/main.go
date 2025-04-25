@@ -13,6 +13,7 @@ import (
 	pkg "github.com/gucio321/spiffy/pkg"
 	"github.com/gucio321/spiffy/pkg/gcb"
 	"github.com/gucio321/spiffy/pkg/viewer"
+	"github.com/gucio321/spiffy/pkg/workspace"
 )
 
 type Flags struct {
@@ -37,6 +38,10 @@ type Flags struct {
 	StartZ float64
 	// DepthDelta describes delta between draw/not draw state.
 	DepthDelta float64
+	// WorkspaceName is a workspace name from workspaces.json
+	WorkspaceName string
+	// Workspace is a custom workspace
+	Workspace  *workspace.Workspace
 	force      bool
 	preset     string
 	makePreset bool
@@ -45,6 +50,10 @@ type Flags struct {
 
 func main() {
 	var f Flags
+	f.Workspace = &workspace.Workspace{
+		Name:        "custom",
+		Description: "Custom workspace set by cmd/spiffy",
+	}
 	flag.StringVar(&f.InputFilePath, "i", "", "input file path")
 	flag.StringVar(&f.OutputFilePath, "o", "", "output file path")
 	flag.Float64Var(&f.Scale, "s", 1.0, "Scale factor")
@@ -54,11 +63,16 @@ func main() {
 	flag.IntVar(&f.RepeatN, "rn", 0, "repeat N times (use with -rd)")
 	flag.Float64Var(&f.RepeatDepth, "rd", 5, "repeat depth (use with -rn)")
 	flag.Float64Var(&f.StartZ, "sz", 0, "start Z (use along with -dz for delta zet)")
-	flag.Float64Var(&f.DepthDelta, "dz", gcb.BaseDepth, "delta Z (use along with -sz for start zet)")
+	flag.Float64Var(&f.DepthDelta, "dz", float64(gcb.BaseDepth), "delta Z (use along with -sz for start zet)")
 	flag.BoolVar(&f.force, "f", false, "force")
 	flag.StringVar(&f.preset, "preset", "", "JSON preset file path. This will override all other flags")
 	flag.BoolVar(&f.makePreset, "make-preset", false, "auto-generate preset")
 	flag.BoolVar(&f.showGCode, "show-gcode", false, "print resulting GCode even if -o is set")
+	flag.StringVar(&f.WorkspaceName, "workspace", "", "workspace name from workspaces.json")
+	flag.IntVar(&f.Workspace.MinX, "minx", 0, "workspace min x")
+	flag.IntVar(&f.Workspace.MinY, "miny", 0, "workspace min y")
+	flag.IntVar(&f.Workspace.MaxX, "maxx", 0, "workspace max x")
+	flag.IntVar(&f.Workspace.MaxY, "maxy", 0, "workspace max y")
 	flag.Parse()
 
 	if f.makePreset {
@@ -82,7 +96,7 @@ func main() {
 		}
 	}
 
-	if f.StartZ != 0 && f.DepthDelta == gcb.BaseDepth && !f.force {
+	if f.StartZ != 0 && f.DepthDelta == float64(gcb.BaseDepth) && !f.force {
 		glg.Fatal("Please specify -dz (-f to force)")
 	}
 
@@ -120,6 +134,14 @@ func main() {
 	result, err := pkg.Parse(data)
 	if err != nil {
 		glg.Fatalf("Cannot parse file %s: %v", f.InputFilePath, err)
+	}
+
+	if f.WorkspaceName != "" {
+		result.WorkspaceName(f.WorkspaceName)
+	}
+
+	if f.Workspace.MinX != 0 || f.Workspace.MinY != 0 || f.Workspace.MaxX != 0 || f.Workspace.MaxY != 0 {
+		result.Workspace(f.Workspace)
 	}
 
 	if f.RepeatN > 0 {

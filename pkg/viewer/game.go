@@ -22,10 +22,17 @@ import (
 
 var _ ebiten.Game = &Viewer{}
 
+func (v *Viewer) baseScale() float64 {
+	return screenH/float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY) - .5
+}
+
+func (v *Viewer) startY() float64 {
+	// TODO: what the fuck is 600?
+	return 600 / v.baseScale()
+}
+
 const (
 	screenW, screenH = 800, 600
-	baseScale        = screenH/float64(gcb.MaxY-gcb.MinY) - .5
-	startY           = 600 / baseScale
 )
 
 var (
@@ -112,69 +119,70 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 	return result
 }
 
-func (g *Viewer) render() *ebiten.Image {
+func (v *Viewer) render() *ebiten.Image {
 	// here we make a render queue. No other render() will start as long as this is running.
-	g.rendering.Wait()
-	g.rendering.Add(1)
-	g.isRendering = true
+	v.rendering.Wait()
+	v.rendering.Add(1)
+	v.isRendering = true
 
-	g.code = ""
+	v.code = ""
 
-	endFrame := g.cmdRange[1]
-	if g.isPlaying {
-		endFrame = int32(g.currentFrame)
+	endFrame := v.cmdRange[1]
+	if v.isPlaying {
+		endFrame = int32(v.currentFrame)
 	}
 
-	scale := baseScale
-	dest := ebiten.NewImage(g.w, g.h)
+	scale := v.baseScale()
+	dest := ebiten.NewImage(v.w, v.h)
 	dest.Fill(colornames.Black)
 	isDrawing := false
 
 	ebitenutil.DrawLine(dest,
-		(gcb.MaxX-gcb.MinX)*scale, startY*scale,
-		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
+		float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)*scale, v.startY()*scale,
+		float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)*scale, float64(v.startY()-float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY))*scale,
 		borderColor)
 
 	ebitenutil.DebugPrintAt(dest,
-		fmt.Sprintf("Min Y: %d, Max Y: %d, H: %d", gcb.MinY, gcb.MaxY, (gcb.MaxY-gcb.MinY)),
-		5+int((gcb.MaxX-gcb.MinX)*scale), int((startY*scale+(startY-(gcb.MaxY-gcb.MinY))*scale)/2),
+		fmt.Sprintf("Min Y: %d, Max Y: %d, H: %d",
+			v.gcode.Workspace().MinY, v.gcode.Workspace().MaxY, (v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY)),
+		5+int(float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)*scale), int(float64(v.startY()*scale+(v.startY()-float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY))*scale)/2),
 	)
 
 	ebitenutil.DrawLine(dest,
-		0*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
-		(gcb.MaxX-gcb.MinX)*scale, (startY-(gcb.MaxY-gcb.MinY))*scale,
+		0*scale, float64(v.startY()-float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY))*scale,
+		float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)*scale, (v.startY()-float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY))*scale,
 		borderColor)
 
 	ebitenutil.DebugPrintAt(dest,
-		fmt.Sprintf("Min X: %d, Max X: %d, W: %d", gcb.MinX, gcb.MaxX, (gcb.MaxX-gcb.MinX)),
-		int((gcb.MaxX-gcb.MinX)*scale/2), int((startY-(gcb.MaxY-gcb.MinY))*scale)-20,
+		fmt.Sprintf("Min X: %d, Max X: %d, W: %d", v.gcode.Workspace().MinX, v.gcode.Workspace().MaxX, (v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)),
+		int(float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX)*scale/2), int((v.startY()-float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY))*scale)-20,
 	)
 
 	var currentX, currentY float64
 
-	switch g.axesModifiers[0] {
+	switch v.axesModifiers[0] {
 	case 1:
-		currentX = float64(gcb.BaseX - gcb.MinX)
+		currentX = float64(gcb.BaseX - v.gcode.Workspace().MinX)
 	case -1:
-		currentX = float64(gcb.MaxX-gcb.MinX) - float64(gcb.BaseX-gcb.MinX)
+		currentX = float64(v.gcode.Workspace().MaxX-v.gcode.Workspace().MinX) - float64(gcb.BaseX-v.gcode.Workspace().MinX)
 	}
 
-	switch g.axesModifiers[1] {
+	switch v.axesModifiers[1] {
 	case 1:
-		currentY = float64(startY) - (gcb.BaseY - gcb.MinY)
+		currentY = float64(v.startY()) - float64(gcb.BaseY-v.gcode.Workspace().MinY)
 	case -1:
-		currentY = float64(gcb.MaxY-gcb.MinY) - (float64(startY) - (gcb.BaseY - gcb.MinY))
+		currentY = float64(v.gcode.Workspace().MaxY-v.gcode.Workspace().MinY) - (float64(v.startY()) - float64(gcb.BaseY-v.gcode.Workspace().MinY))
 	}
 
 	currentZ := 0
 	go func() {
-		for i, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
-			g.renderingProgress = float32(i) / float32(endFrame-g.cmdRange[0])
+		for i, cmd := range v.gcode.Commands()[v.cmdRange[0]:endFrame] {
+			v.renderingProgress = float32(i) / float32(endFrame-v.cmdRange[0])
 			switch cmd.Code {
 			case "G0":
-				g.code += cmd.String(true, true) + "\n"
+				v.code += cmd.String(true, true) + "\n"
 				if _, ok := cmd.Args["Z"]; ok { // we assume this is up/down command for now
-					if g.showStateChange {
+					if v.showStateChange {
 						ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
 					}
 
@@ -184,28 +192,28 @@ func (g *Viewer) render() *ebiten.Image {
 				_, xChange := cmd.Args["X"]
 				_, yChange := cmd.Args["Y"]
 				if xChange || yChange {
-					newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
-					newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
+					newX := currentX + float64(cmd.Args["X"])*float64(v.axesModifiers[0])
+					newY := currentY - float64(cmd.Args["Y"])*float64(v.axesModifiers[1]) // this is because of 0,0 difference
 
-					x := 7 * float64(currentZ-g.Y.Min) / float64(g.Y.Delta)
+					x := 7 * float64(currentZ-v.Y.Min) / float64(v.Y.Delta)
 					x = x - math.Floor(x)
 					c := GreenToRedHSV(x)
 
-					if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
+					if !((isDrawing && !v.showPrinting) || (!isDrawing && !v.showMoves)) {
 						ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
 					}
 
 					currentX, currentY = newX, newY
 				}
 			case "":
-				g.code += cmd.String(true, true) + "\n"
+				v.code += cmd.String(true, true) + "\n"
 			default:
 				glg.Warnf("Unknown command: %s", cmd.Code)
 			}
 		}
 
-		g.rendering.Done()
-		g.isRendering = false
+		v.rendering.Done()
+		v.isRendering = false
 	}()
 
 	return dest

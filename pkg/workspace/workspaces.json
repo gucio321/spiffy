@@ -1,0 +1,18 @@
+[
+        {
+                "Name": "stara-ramka",
+                "Description": "Stara Ramka, ta co ma zaokrąglone narożniki, skręcana na śróby",
+                "MinX": 40,
+                "MinY": 40,
+                "MaxX": 180,
+                "MaxY": 180
+        },
+        {
+                "Name": "default",
+                "Description": "Default workspace",
+                "MinX": 35,
+                "MinY": 25,
+                "MaxX": 210,
+                "MaxY": 200
+        }
+]

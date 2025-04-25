@@ -22,7 +22,7 @@ func (b *GCodeBuilder) moveRel(p BetterPoint[RelativePos]) *GCodeBuilder {
 		},
 	})
 
-	validateHwAbs(b.currentP)
+	b.validateHwAbs(b.currentP)
 	return b
 }
 
@@ -32,7 +32,7 @@ func (b *GCodeBuilder) Move(p BetterPoint[AbsolutePos]) error {
 	b.Commentf("BEGIN Move(%v)", p)
 
 	p = validateAbs(p)
-	relP := b.absToRel(translate(p))
+	relP := b.absToRel(b.translate(p))
 	b.moveRel(relP)
 
 	b.Commentf("END Move(%v)", p)
@@ -108,7 +108,7 @@ func (b *GCodeBuilder) DrawCircle(pImg BetterPoint[AbsolutePos], r float32) erro
 	b.Commentf("BEGIN DrawCircle(%f, %f)", pImg, r)
 
 	// 1.0: find x,y to move
-	p := translate(pImg)
+	p := b.translate(pImg)
 	baseP := BetterPoint[AbsolutePos]{
 		X: pImg.X,
 		Y: pImg.Y + AbsolutePos(r),
@@ -159,7 +159,7 @@ func (b *GCodeBuilder) DrawSector(pImg BetterPoint[AbsolutePos], radius float32,
 	b.Commentf("BEGIN DrawSector(%v, %f, %f, %f)", pImg, radius, start, end)
 
 	// 1.0: find x,y to move
-	p := translate(pImg)
+	p := b.translate(pImg)
 	baseP := pImg.Add(BetterPoint[AbsolutePos]{
 		AbsolutePos(math.Cos(float64(start)) * float64(radius)),
 		AbsolutePos(math.Sin(float64(start)) * float64(radius)),
@@ -175,9 +175,9 @@ func (b *GCodeBuilder) DrawSector(pImg BetterPoint[AbsolutePos], radius float32,
 		AbsolutePos(math.Sin(float64(end)) * float64(radius)),
 	})
 
-	hwAbsFinalP := translate(finalP)
+	hwAbsFinalP := b.translate(finalP)
 
-	relFinalP := b.absToRel(translate(finalP))
+	relFinalP := b.absToRel(b.translate(finalP))
 	// 1.2: do circle
 	relP := b.absToRel(p)
 
@@ -257,14 +257,14 @@ func (b *GCodeBuilder) DrawBezierCubic(start, end, control1, control2 BetterPoin
 	}
 
 	// 1.2: calculate control point 1 (as relative to start)
-	control1Rel := b.absToRel(translate(control1))
+	control1Rel := b.absToRel(b.translate(control1))
 	// 1.3: find relative end pos
-	endRel := b.absToRel(translate(end))
+	endRel := b.absToRel(b.translate(end))
 	// 1.4: calculate control point 2 (as relative to end)
 	// according to doc it should be control2-end
 	control2Rel := Redefine[RelativePos](control2.Add(end.Mul(-1)))
 	// 1.5: draw
-	endHwAbs := translate(end)
+	endHwAbs := b.translate(end)
 	b.PushCommand(Command{
 		LineComment: fmt.Sprintf("Finish at %v", endHwAbs),
 		Code:        GCodeBezierCubic,

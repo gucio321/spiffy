@@ -1,16 +1,18 @@
 {
 	"InputFilePath": "AGH.svg",
         "View": true,
-	"Scale": 1,
+	"Scale": 0.8,
 	"CommentsAbove": false,
 	"NoLineComments": true,
 
          "_": "We want to make 12 spif with 3 delta every time",
 	"RepeatN": 4,
-	"RepeatDepth": 3,
+	"RepeatDepth": 1,
 
         "_": "26 is the base height",
         "StartZ": 20,
-	"DepthDelta": 12 
+	"DepthDelta": 12 ,
+
+        "WorkspaceName": "stara-ramka"
 }
 
