@@ -59,7 +59,9 @@ type Viewer struct {
 	Y                struct {
 		Min, Max, Delta int
 	}
-	rendering *sync.WaitGroup
+	rendering         *sync.WaitGroup
+	isRendering       bool
+	renderingProgress float32
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -116,6 +118,7 @@ func (g *Viewer) render() *ebiten.Image {
 	// here we make a render queue. No other render() will start as long as this is running.
 	g.rendering.Wait()
 	g.rendering.Add(1)
+	g.isRendering = true
 
 	g.code = ""
 
@@ -167,7 +170,8 @@ func (g *Viewer) render() *ebiten.Image {
 
 	currentZ := 0
 	go func() {
-		for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
+		for i, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
+			g.renderingProgress = float32(i) / float32(endFrame-g.cmdRange[0])
 			switch cmd.Code {
 			case "G0":
 				g.code += cmd.String(true, true) + "\n"
@@ -203,6 +207,7 @@ func (g *Viewer) render() *ebiten.Image {
 		}
 
 		g.rendering.Done()
+		g.isRendering = false
 	}()
 
 	return dest
@@ -389,6 +394,14 @@ Scale: %.2f
 			glg.Infof("Current frame was exported as %v", filename)
 		}
 
+		imgui.End()
+	}
+
+	if v.isRendering {
+		imgui.SetNextWindowSize(imgui.Vec2{screenW, 50})
+		imgui.SetNextWindowPos(imgui.Vec2{0, screenH - 50})
+		imgui.BeginV("Progress", nil, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoTitleBar)
+		imgui.ProgressBarV(v.renderingProgress, imgui.Vec2{-1, 0}, fmt.Sprintf("Rendering: %.0f%%", v.renderingProgress*100))
 		imgui.End()
 	}
 
