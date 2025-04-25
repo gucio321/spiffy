@@ -65,7 +65,6 @@ type Viewer struct {
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
-	fmt.Println(baseScale)
 	ebitenBackend := ebitenbackend.NewEbitenBackend()
 	backend.CreateBackend(ebitenBackend)
 	ebitenBackend.CreateWindow("GCode Viewer", screenW, screenH)
@@ -108,7 +107,6 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 	}
 
 	result.Y.Delta = result.Y.Max - result.Y.Min
-	fmt.Println(result.Y)
 
 	result.current = result.render()
 	return result
@@ -384,9 +382,9 @@ Scale: %.2f
 		if imgui.Button("Export current frame") {
 			filename := "frame.png"
 			b := bytes.NewBufferString("")
-			fmt.Println("start encode")
+			glg.Info("encoding started")
 			png.Encode(b, v.current)
-			fmt.Println("end encode")
+			glg.Info("encoding finished")
 			if err := os.WriteFile(filename, b.Bytes(), 0644); err != nil {
 				glg.Errorf("Error while exporting frame: %v", err)
 			}
