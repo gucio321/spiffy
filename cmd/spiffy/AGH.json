@@ -3,9 +3,14 @@
         "View": true,
 	"Scale": 1,
 	"CommentsAbove": false,
-	"NoLineComments": false,
-	"RepeatN": 20,
-	"RepeatDepth": 5,
-	"DepthDelta": 26
+	"NoLineComments": true,
+
+         "_": "We want to make 12 spif with 3 delta every time",
+	"RepeatN": 4,
+	"RepeatDepth": 3,
+
+        "_": "26 is the base height",
+        "StartZ": 20,
+	"DepthDelta": 12 
 }
 
