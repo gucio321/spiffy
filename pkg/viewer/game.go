@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"time"
 
@@ -176,7 +177,9 @@ func (g *Viewer) render() *ebiten.Image {
 				newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
 				newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
 
-				c := GreenToRedHSV(float64(currentZ-g.Y.Min) / float64(g.Y.Delta))
+				x := 7 * float64(currentZ-g.Y.Min) / float64(g.Y.Delta)
+				x = x - math.Floor(x)
+				c := GreenToRedHSV(x)
 
 				if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
 					ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
