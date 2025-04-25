@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/AllenDang/cimgui-go/backend"
@@ -58,6 +59,7 @@ type Viewer struct {
 	Y                struct {
 		Min, Max, Delta int
 	}
+	rendering *sync.WaitGroup
 }
 
 func NewViewer(g *gcb.GCodeBuilder) *Viewer {
@@ -78,6 +80,7 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 		w:               screenW,
 		h:               screenH,
 		axesModifiers:   [2]int{1, 1},
+		rendering:       &sync.WaitGroup{},
 	}
 
 	// claculate Y stats
@@ -110,6 +113,10 @@ func NewViewer(g *gcb.GCodeBuilder) *Viewer {
 }
 
 func (g *Viewer) render() *ebiten.Image {
+	// here we make a render queue. No other render() will start as long as this is running.
+	g.rendering.Wait()
+	g.rendering.Add(1)
+
 	g.code = ""
 
 	endFrame := g.cmdRange[1]
@@ -159,40 +166,44 @@ func (g *Viewer) render() *ebiten.Image {
 	}
 
 	currentZ := 0
-	for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
-		switch cmd.Code {
-		case "G0":
-			g.code += cmd.String(true, true) + "\n"
-			if _, ok := cmd.Args["Z"]; ok { // we assume this is up/down command for now
-				if g.showStateChange {
-					ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
+	go func() {
+		for _, cmd := range g.gcode.Commands()[g.cmdRange[0]:endFrame] {
+			switch cmd.Code {
+			case "G0":
+				g.code += cmd.String(true, true) + "\n"
+				if _, ok := cmd.Args["Z"]; ok { // we assume this is up/down command for now
+					if g.showStateChange {
+						ebitenutil.DrawCircle(dest, currentX*scale, currentY*scale, 2, stateChangeColor)
+					}
+
+					currentZ += int(cmd.Args["Z"])
 				}
 
-				currentZ += int(cmd.Args["Z"])
-			}
+				_, xChange := cmd.Args["X"]
+				_, yChange := cmd.Args["Y"]
+				if xChange || yChange {
+					newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
+					newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
 
-			_, xChange := cmd.Args["X"]
-			_, yChange := cmd.Args["Y"]
-			if xChange || yChange {
-				newX := currentX + float64(cmd.Args["X"])*float64(g.axesModifiers[0])
-				newY := currentY - float64(cmd.Args["Y"])*float64(g.axesModifiers[1]) // this is because of 0,0 difference
+					x := 7 * float64(currentZ-g.Y.Min) / float64(g.Y.Delta)
+					x = x - math.Floor(x)
+					c := GreenToRedHSV(x)
 
-				x := 7 * float64(currentZ-g.Y.Min) / float64(g.Y.Delta)
-				x = x - math.Floor(x)
-				c := GreenToRedHSV(x)
+					if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
+						ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
+					}
 
-				if !((isDrawing && !g.showPrinting) || (!isDrawing && !g.showMoves)) {
-					ebitenutil.DrawLine(dest, currentX*scale, currentY*scale, newX*scale, newY*scale, c)
+					currentX, currentY = newX, newY
 				}
-
-				currentX, currentY = newX, newY
+			case "":
+				g.code += cmd.String(true, true) + "\n"
+			default:
+				glg.Warnf("Unknown command: %s", cmd.Code)
 			}
-		case "":
-			g.code += cmd.String(true, true) + "\n"
-		default:
-			glg.Warnf("Unknown command: %s", cmd.Code)
 		}
-	}
+
+		g.rendering.Done()
+	}()
 
 	return dest
 }
@@ -220,7 +231,7 @@ Scale: %.2f
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{0, 1, 0, 1})
 
 	if imgui.Checkbox("Show Moves (without drawing)", &v.showMoves) {
-		v.current = v.render()
+		go func() { v.current = v.render() }()
 	}
 
 	imgui.PopStyleColor()
@@ -228,7 +239,7 @@ Scale: %.2f
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 0, 0, 1})
 
 	if imgui.Checkbox("Show Drawing", &v.showPrinting) {
-		v.current = v.render()
+		go func() { v.current = v.render() }()
 	}
 
 	imgui.PopStyleColor()
@@ -236,7 +247,7 @@ Scale: %.2f
 	imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 1, 0, 1})
 
 	if imgui.Checkbox("Show State changes (start/stop drawing)", &v.showStateChange) {
-		v.current = v.render()
+		go func() { v.current = v.render() }()
 	}
 
 	imgui.PopStyleColor()
@@ -260,7 +271,7 @@ Scale: %.2f
 				v.axesModifiers[1] = 1
 			}
 
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.SameLine()
@@ -271,14 +282,14 @@ Scale: %.2f
 				v.axesModifiers[0] = 1
 			}
 
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.Text("Command Range:")
 
 		imgui.PushItemWidth(80)
 		if imgui.SliderInt("##start", &v.cmdRange[0], 0, v.cmdRange[1]) {
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.SameLine()
@@ -292,14 +303,14 @@ Scale: %.2f
 				v.cmdRange[0] = v.cmdRange[1]
 			}
 
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.PopItemWidth()
 
 		imgui.PushItemWidth(80)
 		if imgui.SliderInt("##end", &v.cmdRange[1], v.cmdRange[0], int32(len(v.gcode.Commands())-1)) {
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.SameLine()
@@ -313,7 +324,7 @@ Scale: %.2f
 				v.cmdRange[1] = v.cmdRange[0]
 			}
 
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 
 		imgui.PopItemWidth()
@@ -350,7 +361,7 @@ Scale: %.2f
 			imgui.PushStyleColorVec4(imgui.ColText, imgui.Vec4{1, 0, 0, 1})
 			if imgui.Button("Stop") {
 				v.isPlaying = false
-				v.current = v.render() // rerender to the default view
+				go func() { v.current = v.render() }()
 			}
 
 			imgui.PopStyleColor()
@@ -394,7 +405,7 @@ Scale: %.2f
 		if delta >= time.Duration(time.Duration(v.playTickMs)*time.Millisecond) {
 			v.t = time.Now()
 			v.currentFrame++
-			v.current = v.render()
+			go func() { v.current = v.render() }()
 		}
 	}
 
