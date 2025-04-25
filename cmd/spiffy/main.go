@@ -128,7 +128,7 @@ func main() {
 
 	gcode.Comments(!f.NoLineComments, f.CommentsAbove)
 
-	if f.OutputFilePath == "" || f.showGCode {
+	if (f.OutputFilePath == "" && !f.View) || f.showGCode {
 		fmt.Println(gcode)
 	}
 
