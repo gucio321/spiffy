@@ -29,6 +29,7 @@ type Flags struct {
 	force          bool
 	preset         string
 	makePreset     bool
+	showGCode      bool
 }
 
 func main() {
@@ -44,8 +45,9 @@ func main() {
 	flag.Float64Var(&f.startZ, "sz", 0, "start Z (use along with -dz for delta zet)")
 	flag.Float64Var(&f.DepthDelta, "dz", gcb.BaseDepth, "delta Z (use along with -sz for start zet)")
 	flag.BoolVar(&f.force, "f", false, "force")
-	flag.StringVar(&f.preset, "preset", "", "JSOn preset file path. This will override all other flags")
+	flag.StringVar(&f.preset, "preset", "", "JSON preset file path. This will override all other flags")
 	flag.BoolVar(&f.makePreset, "make-preset", false, "auto-generate preset")
+	flag.BoolVar(&f.showGCode, "show-gcode", false, "print resulting GCode even if -o is set")
 	flag.Parse()
 
 	if f.makePreset {
@@ -78,7 +80,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	inkscapeProxy := inkscape.NewProxy(inkscape.Verbose(false))
+	inkscapeProxy := inkscape.NewProxy(inkscape.Verbose(true))
 	if err := inkscapeProxy.Run(); err != nil {
 		glg.Fatalf("Cannot run inkscape: %v", err)
 	}
@@ -126,7 +128,9 @@ func main() {
 
 	gcode.Comments(!f.NoLineComments, f.CommentsAbove)
 
-	fmt.Println(gcode)
+	if f.OutputFilePath == "" || f.showGCode {
+		fmt.Println(gcode)
+	}
 
 	if f.OutputFilePath != "" {
 		if err := os.WriteFile(f.OutputFilePath, []byte(gcode.String()), 0644); err != nil {
