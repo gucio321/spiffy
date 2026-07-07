@@ -8,7 +8,7 @@ require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.0
 	github.com/kpango/glg v1.6.15
 	github.com/rustyoz/svg v0.0.0-20240916132020-37383a9eebb1
-	golang.org/x/image v0.38.0
+	golang.org/x/image v0.41.0
 )
 
 require (
